@@ -1,0 +1,23 @@
+:root {
+  /* Brand Colors */
+  --primary-color: #c12657;
+  --secondary-color: #c92855;
+  --accent-color: #fee3c5;
+
+  /* Text */
+  --text-dark: #333;
+  --text-light: #666;
+
+  /* UI */
+  --border-color: #ddd;
+  --background-light: #f8f9fa;
+
+  /* Radius */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Transitions */
+  --transition-fast: 0.2s ease;
+  --transition-medium: 0.3s ease;
+}

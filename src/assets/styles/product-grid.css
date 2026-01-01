@@ -1,0 +1,126 @@
+/* ================= PRODUCT GRID (FULLY ISOLATED) ================= */
+
+/* Root wrapper – VERY IMPORTANT for isolation */
+.product-grid-wrapper {
+  width: 100%;
+  padding: 40px 5%;
+  background: #fff;
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+}
+
+/* ================= CATEGORY FILTER ================= */
+
+.product-filters {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
+
+.product-filter-btn {
+  padding: 7px 18px;
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #222;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.product-filter-btn:hover {
+  border-color: #c12657;
+  color: #c12657;
+}
+
+.product-filter-btn.active {
+  background: #c12657;
+  color: #fff;
+  border-color: #c12657;
+}
+
+/* ================= GRID LAYOUT ================= */
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 28px;
+}
+
+/* ================= PRODUCT CARD ================= */
+
+.product-card {
+  background: #fff;
+  border-radius: 14px;
+  border: 1px solid #e3e3e3;
+  overflow: hidden;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* ================= PRODUCT IMAGE ================= */
+
+.product-image {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: #f7f7f7;
+  overflow: hidden;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* ================= PRODUCT INFO ================= */
+
+.product-info {
+  padding: 16px 16px 18px;
+}
+
+/* TITLE */
+.product-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #111;
+  line-height: 1.35;
+  margin-bottom: 8px;
+}
+
+/* PRICE */
+.product-price {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #c12657;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1200px) {
+  .product-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .product-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .product-grid-wrapper {
+    padding: 20px 4%;
+  }
+
+  .product-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -117,10 +117,27 @@
 
 @media (max-width: 520px) {
   .product-grid-wrapper {
-    padding: 20px 4%;
+    padding: 16px 4%;
   }
 
   .product-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 14px;
+  }
+
+  .product-card {
+    border-radius: 10px;
+  }
+
+  .product-image {
+    aspect-ratio: 1 / 1.2;
+  }
+
+  .product-title {
+    font-size: 0.9rem;
+  }
+
+  .product-price {
+    font-size: 1rem;
   }
 }

@@ -9,7 +9,6 @@ const SearchResults = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -25,13 +24,11 @@ const SearchResults = () => {
 
   const performSearch = async (query) => {
     setIsLoading(true);
-    setError(null);
     try {
       const results = await productService.searchProducts(query);
       setSearchResults(results);
     } catch (err) {
       console.error("Search error:", err);
-      setError("Failed to search products. Please try again.");
       setSearchResults([]);
     } finally {
       setIsLoading(false);

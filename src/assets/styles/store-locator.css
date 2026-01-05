@@ -527,6 +527,9 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+    #scrollToTopBtn {
+        display: none !important;
+    }
     .header-top, .nav-container {
         padding: 15px 20px;
     }

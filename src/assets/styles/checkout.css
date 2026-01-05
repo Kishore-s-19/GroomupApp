@@ -1,0 +1,272 @@
+.checkout-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  min-height: 80vh;
+}
+
+.checkout-container {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 40px;
+  align-items: start;
+}
+
+.checkout-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 30px;
+  color: var(--text-dark);
+  letter-spacing: 0.5px;
+}
+
+/* Sections */
+.checkout-section {
+  margin-bottom: 40px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 30px;
+}
+
+.checkout-section:last-child {
+  border-bottom: none;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 500;
+  margin-bottom: 20px;
+  color: var(--text-dark);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Forms */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.form-label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-light);
+  margin-bottom: 5px;
+  font-weight: 500;
+}
+
+.form-input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 15px;
+  transition: border-color var(--transition-fast);
+}
+
+.form-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
+/* Delivery Options */
+.delivery-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.delivery-option {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.delivery-option.selected {
+  border-color: var(--primary-color);
+  background-color: #fff9fb; /* Light hint of primary */
+}
+
+.radio-circle {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border-color);
+  border-radius: 50%;
+  margin-right: 15px;
+  position: relative;
+  flex-shrink: 0;
+}
+
+.delivery-option.selected .radio-circle {
+  border-color: var(--primary-color);
+}
+
+.delivery-option.selected .radio-circle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background-color: var(--primary-color);
+  border-radius: 50%;
+}
+
+.option-details {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.option-name {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.option-desc {
+  font-size: 13px;
+  color: var(--text-light);
+}
+
+.option-price {
+  font-weight: 600;
+}
+
+/* Order Summary (Right Column) */
+.order-summary-card {
+  background-color: var(--background-light);
+  padding: 30px;
+  border-radius: var(--radius-md);
+  position: sticky;
+  top: 100px; /* Adjust based on header height */
+}
+
+.summary-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.cart-items-preview {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 20px;
+  padding-right: 5px;
+}
+
+.mini-item {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+}
+
+.mini-item-img {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  background-color: #fff;
+}
+
+.mini-item-info {
+  flex: 1;
+}
+
+.mini-item-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.mini-item-meta {
+  font-size: 12px;
+  color: var(--text-light);
+  display: flex;
+  justify-content: space-between;
+}
+
+.summary-totals {
+  border-top: 1px solid var(--border-color);
+  padding-top: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: var(--text-light);
+}
+
+.summary-row.total {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}
+
+.place-order-btn {
+  width: 100%;
+  background-color: var(--text-dark); /* Premium black button like Apple/Zara */
+  color: white;
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  font-size: 16px;
+  font-weight: 600;
+  margin-top: 25px;
+  transition: background-color var(--transition-fast);
+}
+
+.place-order-btn:hover {
+  background-color: var(--primary-color);
+}
+
+.secure-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-light);
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .checkout-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .order-summary-card {
+    position: static;
+    margin-bottom: 40px;
+    order: -1; /* Show summary first on mobile? Or last? Usually last or collapsed. Let's keep it standard first. */
+  }
+}

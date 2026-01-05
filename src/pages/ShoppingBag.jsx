@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import '../assets/styles/shopping-bag.css'; // Your CSS file
@@ -6,39 +6,15 @@ import '../assets/styles/shopping-bag.css'; // Your CSS file
 const ShoppingBag = () => {
   const navigate = useNavigate();
   const { cart, updateQuantity, removeFromCart, loading: cartLoading } = useCart();
-  const [subtotal, setSubtotal] = useState(0);
-  const [deliveryFee, setDeliveryFee] = useState(0);
-  const [total, setTotal] = useState(0);
-
-  // Calculate totals whenever cart changes
-  useEffect(() => {
-    calculateTotals(cart);
+  const subtotal = useMemo(() => {
+    return cart.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
   }, [cart]);
+  const deliveryFee = useMemo(() => (subtotal < 999 ? 148 : 0), [subtotal]);
+  const total = useMemo(() => subtotal + deliveryFee, [subtotal, deliveryFee]);
 
-  const calculateTotals = (bagItems) => {
-   const subtotalCalc = bagItems.reduce(
-  (sum, item) => sum + Number(item.price) * item.quantity,
-  0
-);
-    const deliveryFeeCalc = subtotalCalc < 999 ? 148 : 0;
-    const totalCalc = subtotalCalc + deliveryFeeCalc;
-    
-    setSubtotal(subtotalCalc);
-    setDeliveryFee(deliveryFeeCalc);
-    setTotal(totalCalc);
-  };
+  // No effects needed for totals; all derived via useMemo
 
-  const handleUpdateQuantity = async (itemId, newQuantity) => {
-    if (newQuantity <= 0) {
-      await removeFromCart(itemId);
-    } else {
-      await updateQuantity(itemId, newQuantity);
-    }
-  };
-
-  const handleRemoveItem = async (itemId) => {
-    await removeFromCart(itemId);
-  };
+  // Handlers handled inline in render; removed unused functions
 
   const proceedToCheckout = () => {
     if (cart.length === 0) {
@@ -53,9 +29,8 @@ const ShoppingBag = () => {
       return;
     }
     
-    // In a real application, you would redirect to checkout page
-    alert('Proceeding to checkout...');
-    // navigate('/checkout');
+    // Navigate to checkout page
+    navigate('/checkout');
   };
 
   const continueShopping = () => {
@@ -107,11 +82,11 @@ const ShoppingBag = () => {
             {attributesHTML}
           </div>
           <div className="quantity-controls">
-            <button className="quantity-btn" onClick={() => updateQuantity(item.id, -1)}>-</button>
+            <button className="quantity-btn" onClick={() => updateQuantity(item.id, Number(item.quantity) - 1)}>-</button>
             <span className="quantity-value">{item.quantity}</span>
-            <button className="quantity-btn" onClick={() => updateQuantity(item.id, 1)}>+</button>
+            <button className="quantity-btn" onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}>+</button>
           </div>
-          <button className="remove-item" onClick={() => removeItem(item.id)}>Remove</button>
+          <button className="remove-item" onClick={() => removeFromCart(item.id)}>Remove</button>
           <div className="item-total">Total: Rs. {(priceValue * item.quantity).toFixed(2)}</div>
         </div>
       </div>

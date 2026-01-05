@@ -10,25 +10,22 @@ import {
 import "./Header.css";
 // Import product data for search
 import { productService } from "../../services/api";
+import { useAuth } from "../../contexts/AuthContext";
+import { useCart } from "../../contexts/CartContext";
 
 const Header = ({ variant = "default" }) => {
+  const { isAuthenticated } = useAuth();
+  const { cart } = useCart();
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [loggedIn, setLoggedIn] = useState(false);
+  
   const searchRef = useRef(null);
   const inputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-
-  
-
-  // Check login status from localStorage
-  useEffect(() => {
-    const user = JSON.parse(localStorage.getItem("groomupUser"));
-    setLoggedIn(!!user);
-  }, []);
 
   // Close search when clicking outside
   useEffect(() => {
@@ -264,7 +261,7 @@ const Header = ({ variant = "default" }) => {
 
                 {/* USER */}
                 <Link to="/profile">
-                  {loggedIn ? (
+                  {isAuthenticated ? (
                     <FaUserCheck className="icon logged-in" />
                   ) : (
                     <FaUser className="icon" />
@@ -272,8 +269,11 @@ const Header = ({ variant = "default" }) => {
                 </Link>
 
                 {/* CART */}
-                <Link to="/cart">
+                <Link to="/cart" className="cart-icon-wrapper">
                   <FaShoppingBag className="icon" />
+                  {cart.length > 0 && (
+                    <span className="cart-badge">{cart.length}</span>
+                  )}
                 </Link>
               </div>
             </nav>

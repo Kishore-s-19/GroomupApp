@@ -7,7 +7,6 @@ const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   const [profileData, setProfileData] = useState({
     fullName: "",
@@ -23,7 +22,6 @@ const Profile = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
         const [profile, userAddresses, userOrders] = await Promise.all([
           userService.getProfile(),
           userService.getAddresses(),
@@ -35,8 +33,6 @@ const Profile = () => {
         setOrders(userOrders);
       } catch (err) {
         console.error("Failed to load profile data", err);
-      } finally {
-        setLoading(false);
       }
     };
 

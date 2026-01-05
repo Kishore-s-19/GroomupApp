@@ -125,3 +125,9 @@
   cursor: pointer;
   z-index: 1000;
 }
+
+@media (max-width: 768px) {
+  #scrollToTopBtn {
+    display: none !important;
+  }
+}

@@ -10,7 +10,6 @@ const HeaderSwitcher = () => {
   const isProductPage = matchPath("/product/:productId", location.pathname);
   const isProduct1Page = matchPath("/product1/:productId", location.pathname);
   const isProductDetailPage = location.pathname.startsWith("/product/");
-  const isTrackOrderPage = location.pathname === "/track-order";
 
   // Product detail
   if (isProductPage||isProduct1Page||isProductDetailPage) {

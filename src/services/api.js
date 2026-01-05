@@ -186,31 +186,53 @@ export const productService = {
 export const cartService = {
   getCart: async () => {
     if (USE_MOCK) {
-      await delay(300);
-      // In a real app, this would fetch from backend
-      // For mock, we can return empty or simulate persisted cart
-      return { items: [] };
+      await delay(200);
+      const saved = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
+      return { items: saved };
     }
     return api.get('/cart');
   },
   addToCart: async (item) => {
     if (USE_MOCK) {
-      await delay(300);
-      return { items: [item] }; // Simplified mock response
+      await delay(200);
+      const saved = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
+      const idx = saved.findIndex(
+        (i) =>
+          i.productId === item.productId &&
+          i.color === item.color &&
+          i.size === item.size
+      );
+      let updated;
+      if (idx >= 0) {
+        updated = [...saved];
+        updated[idx].quantity = (updated[idx].quantity || 1) + (item.quantity || 1);
+      } else {
+        updated = [...saved, { ...item, id: Date.now() }];
+      }
+      localStorage.setItem('groomupShoppingBag', JSON.stringify(updated));
+      return { items: updated };
     }
     return api.post('/cart/add', item);
   },
   updateCartItem: async (itemId, quantity) => {
     if (USE_MOCK) {
-      await delay(300);
-      return { items: [] }; // Simplified
+      await delay(200);
+      const saved = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
+      let updated = saved.map((i) => (i.id === itemId ? { ...i, quantity } : i));
+      // Remove if quantity < 1
+      updated = updated.filter((i) => (i.quantity || 0) > 0);
+      localStorage.setItem('groomupShoppingBag', JSON.stringify(updated));
+      return { items: updated };
     }
     return api.put(`/cart/items/${itemId}`, { quantity });
   },
   removeFromCart: async (itemId) => {
     if (USE_MOCK) {
-      await delay(300);
-      return { items: [] }; // Simplified
+      await delay(200);
+      const saved = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
+      const updated = saved.filter((i) => i.id !== itemId);
+      localStorage.setItem('groomupShoppingBag', JSON.stringify(updated));
+      return { items: updated };
     }
     return api.delete(`/cart/items/${itemId}`);
   }

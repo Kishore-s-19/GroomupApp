@@ -460,6 +460,10 @@ body {
     padding: 15px 20px;
   }
 
+  #scrollToTopBtn {
+    display: none !important;
+  }
+
   .profile-hero h1 {
     font-size: 2.2rem;
   }

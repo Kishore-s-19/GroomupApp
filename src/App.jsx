@@ -1,6 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import RouteLoader from "./components/RouteLoader/RouteLoader";
 
+// Contexts
+import { AuthProvider } from "./contexts/AuthContext";
+import { CartProvider } from "./contexts/CartContext";
+
 // Pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -12,6 +16,7 @@ import ContactUs from "./pages/ContactUs";
 import Profile from "./pages/Profile";
 import ProductDetail from "./pages/ProductDetail";
 import SearchResults from "./pages/SearchResults";
+import Checkout from "./pages/Checkout";
 
 // Layouts
 import MainLayout from "./layouts/MainLayout";
@@ -26,31 +31,36 @@ const App = () => {
   console.log("🚀 App component rendering");
 
   return (
-    <Router>
-      <RouteLoader>
-        <Routes>
+    <AuthProvider>
+      <CartProvider>
+        <Router>
+          <RouteLoader>
+            <Routes>
 
-          {/* 🔐 AUTH ROUTES (NO HEADER / FOOTER) */}
-          <Route element={<AuthLayout />}>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-          </Route>
+              {/* 🔐 AUTH ROUTES (NO HEADER / FOOTER) */}
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+              </Route>
 
-          {/* 🌍 MAIN ROUTES (WITH HEADER / FOOTER) */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/cart" element={<ShoppingBag />} />
-            <Route path="/track-order" element={<TrackOrder />} />
-            <Route path="/store-locator" element={<StoreLocator />} />
-            <Route path="/contact" element={<ContactUs />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/product/:productId" element={<ProductDetail />} />
-            <Route path="/search" element={<SearchResults />} />
-          </Route>
+              {/* 🌍 MAIN ROUTES (WITH HEADER / FOOTER) */}
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<Home />} />
+                <Route path="/cart" element={<ShoppingBag />} />
+                <Route path="/track-order" element={<TrackOrder />} />
+                <Route path="/store-locator" element={<StoreLocator />} />
+                <Route path="/contact" element={<ContactUs />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/product/:productId" element={<ProductDetail />} />
+                <Route path="/search" element={<SearchResults />} />
+                <Route path="/checkout" element={<Checkout />} />
+              </Route>
 
-        </Routes>
-      </RouteLoader>  
-    </Router>
+            </Routes>
+          </RouteLoader>  
+        </Router>
+      </CartProvider>
+    </AuthProvider>
   );
 };
 

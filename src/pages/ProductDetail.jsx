@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { productService } from "../services/api";
+import { useCart } from "../contexts/CartContext";
 import "../assets/styles/product-detail.css";
-import productDetails from "../data/products";
 
 const ProductDetail = () => {
   const { productId } = useParams();
   const navigate = useNavigate();
+  const { addToCart } = useCart();
+  
   const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedColor, setSelectedColor] = useState(0);
   const [selectedSize, setSelectedSize] = useState("");
@@ -22,64 +27,58 @@ const ProductDetail = () => {
   }, []);
 
   useEffect(() => {
-    const productIdNum = parseInt(productId);
-    
-    if (productDetails[productIdNum]) {
-      setProduct(productDetails[productIdNum]);
-      
-      if (productDetails[productIdNum].sizes.includes("One Size")) {
-        setSelectedSize("One Size");
-      } else if (productDetails[productIdNum].sizes.includes("M")) {
-        setSelectedSize("M");
-      } else if (productDetails[productIdNum].sizes.includes("30")) {
-        setSelectedSize("30");
-      } else if (productDetails[productIdNum].sizes.includes("32")) {
-        setSelectedSize("32");
-      } else if (productDetails[productIdNum].sizes.includes("S")) {
-        setSelectedSize("S");
-      } else {
-        setSelectedSize(productDetails[productIdNum].sizes[0]);
+    const fetchProduct = async () => {
+      setLoading(true);
+      try {
+        const data = await productService.getProductById(productId);
+        setProduct(data);
+        
+        // Initialize size selection
+        if (data.sizes && data.sizes.length > 0) {
+          if (data.sizes.includes("One Size")) {
+            setSelectedSize("One Size");
+          } else if (data.sizes.includes("M")) {
+            setSelectedSize("M");
+          } else if (data.sizes.includes("30")) {
+            setSelectedSize("30");
+          } else if (data.sizes.includes("32")) {
+            setSelectedSize("32");
+          } else if (data.sizes.includes("S")) {
+            setSelectedSize("S");
+          } else {
+            setSelectedSize(data.sizes[0]);
+          }
+        }
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching product:", err);
+        setError("Product not found");
+        // Optional: navigate back or show error
+        // navigate("/"); 
+      } finally {
+        setLoading(false);
       }
-    } else {
-      navigate("/");
-    }
+    };
+
+    fetchProduct();
   }, [productId, navigate]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!product) return;
     
-    const cart = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
-    const selectedColorData = product.colors[selectedColor];
+    const selectedColorData = product.colors && product.colors[selectedColor];
+    const colorName = selectedColorData ? selectedColorData.name : (product.colors && product.colors[0] ? product.colors[0].name : "Default");
     
-    const cartItem = {
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: selectedColorData ? selectedColorData.image : product.images[0],
-      brand: product.brand,
-      quantity: 1,
-      color: selectedColorData ? selectedColorData.name : (product.colors && product.colors[0] ? product.colors[0].name : "Default"),
-      size: selectedSize,
-      artNo: `ART${product.id}`
-    };
+    // Use the addToCart from Context
+    const result = await addToCart(product, colorName, selectedSize, 1);
     
-    const existingIndex = cart.findIndex(item => 
-      item.id === cartItem.id && 
-      item.color === cartItem.color &&
-      item.size === cartItem.size
-    );
-    
-    if (existingIndex >= 0) {
-      cart[existingIndex].quantity += 1;
+    if (result.success) {
+      setShowPopup(true);
+      // Auto hide popup after 3 seconds
+      setTimeout(() => setShowPopup(false), 3000);
     } else {
-      cart.push(cartItem);
+      alert("Failed to add to cart");
     }
-    
-    localStorage.setItem('groomupShoppingBag', JSON.stringify(cart));
-    
-    setShowPopup(true);
-    
-    window.dispatchEvent(new Event('storage'));
   };
 
   const toggleAccordion = (index) => {
@@ -88,10 +87,20 @@ const ProductDetail = () => {
     setAccordionActive(newAccordion);
   };
 
-  if (!product) {
+  if (loading) {
     return (
       <div className="loading-container">
         <div className="loading-logo">GROOMUP</div>
+        <p>Loading product details...</p>
+      </div>
+    );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="error-container" style={{ padding: "50px", textAlign: "center" }}>
+        <h2>Product Not Found</h2>
+        <button onClick={() => navigate("/")} className="back-btn">Back to Home</button>
       </div>
     );
   }

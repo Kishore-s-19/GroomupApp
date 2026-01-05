@@ -1,51 +1,50 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import "../assets/styles/auth.css";
 
 const Register = () => {
   const navigate = useNavigate();
+  const { register, error: authError } = useAuth();
 
   const [form, setForm] = useState({
     name: "",
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    const users = JSON.parse(localStorage.getItem("groomupUsers")) || [];
+    const result = await register(form);
 
-    const userExists = users.some(
-      (u) => u.email === form.email
-    );
-
-    if (userExists) {
-      alert("User already exists");
-      return;
+    if (result.success) {
+      navigate("/");
+    } else {
+      setError(result.error?.message || "Registration failed");
     }
-
-    const newUser = {
-      name: form.name,
-      email: form.email,
-      password: form.password,
-    };
-
-    users.push(newUser);
-    localStorage.setItem("groomupUsers", JSON.stringify(users));
-    localStorage.setItem("groomupUser", JSON.stringify(newUser));
-
-    navigate("/");
+    
+    setLoading(false);
   };
 
   return (
     <div className="auth-container">
       <div className="auth-box">
         <h2>Create your GROOMUP account</h2>
+
+        {(error || authError) && (
+          <div className="auth-error">
+            {error || authError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <input
@@ -55,6 +54,7 @@ const Register = () => {
             required
             value={form.name}
             onChange={handleChange}
+            disabled={loading}
           />
 
           <input
@@ -64,6 +64,7 @@ const Register = () => {
             required
             value={form.email}
             onChange={handleChange}
+            disabled={loading}
           />
 
           <input
@@ -73,9 +74,12 @@ const Register = () => {
             required
             value={form.password}
             onChange={handleChange}
+            disabled={loading}
           />
 
-          <button type="submit">Register</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Creating Account..." : "Register"}
+          </button>
         </form>
 
         <p className="auth-switch">

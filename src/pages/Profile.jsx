@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
+import { userService } from "../services/api";
 import "../assets/styles/profile.css";
 
 const Profile = () => {
@@ -6,54 +7,41 @@ const Profile = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const [profileData, setProfileData] = useState({
-    fullName: "Kishore Kumar",
-    email: "kdkishore315@gmail.com",
-    phone: "+91 9342568533",
+    fullName: "",
+    email: "",
+    phone: "",
     dob: "",
-    gender: "Male",
+    gender: "",
   });
 
-  const [orders, setOrders] = useState([
-    {
-      id: "001546632",
-      date: "October 25, 2024",
-      total: "₹1199",
-      items: 1,
-      status: "Delivered"
-    },
-    {
-      id: "000871822",
-      date: "August 09, 2023",
-      total: "₹1299",
-      items: 1,
-      status: "Delivered"
-    }
-  ]);
+  const [orders, setOrders] = useState([]);
+  const [addresses, setAddresses] = useState([]);
 
-  const [addresses, setAddresses] = useState([
-    {
-      id: 1,
-      name: "Kishore Kumar",
-      type: "Home",
-      address: "123 Main Street, Apartment 4B",
-      city: "Mumbai, Maharashtra 400001",
-      country: "India",
-      phone: "+91 98765 43210",
-      isDefault: true
-    },
-    {
-      id: 2,
-      name: "Kishore Kumar",
-      type: "Work",
-      address: "456 Corporate Park, Floor 2",
-      city: "Delhi, Delhi 110001",
-      country: "India",
-      phone: "+91 87654 32109",
-      isDefault: false
-    }
-  ]);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const [profile, userAddresses, userOrders] = await Promise.all([
+          userService.getProfile(),
+          userService.getAddresses(),
+          userService.getOrders()
+        ]);
+        
+        setProfileData(profile);
+        setAddresses(userAddresses);
+        setOrders(userOrders);
+      } catch (err) {
+        console.error("Failed to load profile data", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const [newAddress, setNewAddress] = useState({
     name: "",

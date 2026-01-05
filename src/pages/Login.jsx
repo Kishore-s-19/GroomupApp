@@ -1,43 +1,49 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 import "../assets/styles/auth.css";
 
 const Login = () => {
   const navigate = useNavigate();
-
+  const { login, error: authError } = useAuth();
+  
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
-    const users = JSON.parse(localStorage.getItem("groomupUsers")) || [];
-
-    const user = users.find(
-      (u) =>
-        u.email === form.email &&
-        u.password === form.password
-    );
-
-    if (!user) {
-      alert("Invalid email or password");
-      return;
+    const result = await login(form);
+    
+    if (result.success) {
+      navigate("/");
+    } else {
+      setError(result.error?.message || "Invalid email or password");
     }
-
-    localStorage.setItem("groomupUser", JSON.stringify(user));
-    navigate("/");
+    
+    setLoading(false);
   };
 
   return (
     <div className="auth-container">
       <div className="auth-box">
         <h2>Login to GROOMUP</h2>
+        
+        {(error || authError) && (
+          <div className="auth-error">
+            {error || authError}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <input
@@ -47,6 +53,7 @@ const Login = () => {
             required
             value={form.email}
             onChange={handleChange}
+            disabled={loading}
           />
 
           <input
@@ -56,9 +63,12 @@ const Login = () => {
             required
             value={form.password}
             onChange={handleChange}
+            disabled={loading}
           />
 
-          <button type="submit">Login</button>
+          <button type="submit" disabled={loading}>
+            {loading ? "Logging in..." : "Login"}
+          </button>
         </form>
 
         <p className="auth-switch">

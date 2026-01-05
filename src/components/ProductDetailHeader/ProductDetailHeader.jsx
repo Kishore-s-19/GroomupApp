@@ -9,7 +9,7 @@ import {
 } from "react-icons/fa";
 import "./ProductDetailHeader.css";
 import "../../components/Header/Header.css";
-import productsData from "../../data/products"; 
+import { productService } from "../../services/api";
 import Header from "../components/Header/Header";
 
 const ProductDetailHeader = ({ variant = "product" }) => {
@@ -53,7 +53,7 @@ const ProductDetailHeader = ({ variant = "product" }) => {
   }, [searchOpen]);
 
   // Perform search
-  const performSearch = (query) => {
+  const performSearch = async (query) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
@@ -61,21 +61,15 @@ const ProductDetailHeader = ({ variant = "product" }) => {
 
     setIsSearching(true);
     
-    // Convert products object to array
-    const productsArray = Object.values(productsData);
-    
-    const results = productsArray.filter(product => {
-      const searchLower = query.toLowerCase();
-      return (
-        product.name.toLowerCase().includes(searchLower) ||
-        product.brand.toLowerCase().includes(searchLower) ||
-        product.category.toLowerCase().includes(searchLower) ||
-        (product.description && product.description.toLowerCase().includes(searchLower))
-      );
-    }).slice(0, 10); // Limit to 10 results
-
-    setSearchResults(results);
-    setIsSearching(false);
+    try {
+      const results = await productService.searchProducts(query);
+      setSearchResults(results.slice(0, 10)); // Limit to 10 results
+    } catch (err) {
+      console.error("Search error:", err);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Handle search input change

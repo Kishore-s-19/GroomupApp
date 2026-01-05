@@ -1,43 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-
+import { useCart } from '../contexts/CartContext';
 import '../assets/styles/shopping-bag.css'; // Your CSS file
 
 const ShoppingBag = () => {
   const navigate = useNavigate();
-  const [shoppingBag, setShoppingBag] = useState([]);
+  const { cart, updateQuantity, removeFromCart, loading: cartLoading } = useCart();
   const [subtotal, setSubtotal] = useState(0);
   const [deliveryFee, setDeliveryFee] = useState(0);
   const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
 
-  // Load bag data from localStorage on component mount
+  // Calculate totals whenever cart changes
   useEffect(() => {
-    const loadBagData = () => {
-      const bagData = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
-      setShoppingBag(bagData);
-      calculateTotals(bagData);
-      setIsLoading(false);
-    };
-
-    loadBagData();
-    
-    // Listen for storage changes (in case bag is updated from other tabs/pages)
-    const handleStorageChange = () => {
-      loadBagData();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  // Calculate totals whenever bag changes
-  useEffect(() => {
-    calculateTotals(shoppingBag);
-  }, [shoppingBag]);
+    calculateTotals(cart);
+  }, [cart]);
 
   const calculateTotals = (bagItems) => {
    const subtotalCalc = bagItems.reduce(
@@ -52,30 +28,20 @@ const ShoppingBag = () => {
     setTotal(totalCalc);
   };
 
-  const updateQuantity = (itemId, change) => {
-    const updatedBag = shoppingBag.map(item => {
-      if (item.id === itemId) {
-        const newQuantity = item.quantity + change;
-        if (newQuantity <= 0) {
-          return null; // Mark for removal
-        }
-        return { ...item, quantity: newQuantity };
-      }
-      return item;
-    }).filter(item => item !== null); // Remove items with quantity 0 or less
-    
-    setShoppingBag(updatedBag);
-    localStorage.setItem('groomupShoppingBag', JSON.stringify(updatedBag));
+  const handleUpdateQuantity = async (itemId, newQuantity) => {
+    if (newQuantity <= 0) {
+      await removeFromCart(itemId);
+    } else {
+      await updateQuantity(itemId, newQuantity);
+    }
   };
 
-  const removeItem = (itemId) => {
-    const updatedBag = shoppingBag.filter(item => item.id !== itemId);
-    setShoppingBag(updatedBag);
-    localStorage.setItem('groomupShoppingBag', JSON.stringify(updatedBag));
+  const handleRemoveItem = async (itemId) => {
+    await removeFromCart(itemId);
   };
 
   const proceedToCheckout = () => {
-    if (shoppingBag.length === 0) {
+    if (cart.length === 0) {
       alert('Your bag is empty. Add some items before proceeding to checkout.');
       return;
     }
@@ -155,7 +121,7 @@ const ShoppingBag = () => {
   const renderBagContent = () => (
     <div className="bag-container">
       <div className="bag-items">
-        {shoppingBag.map(renderBagItem)}
+        {cart.map(renderBagItem)}
       </div>
       
       <div className="bag-summary">
@@ -217,7 +183,7 @@ const ShoppingBag = () => {
     </div>
   );
 
-  if (isLoading) {
+  if (cartLoading) {
     return (
       <div className="loading-overlay active">
         <div className="loading-logo">GROOMUP</div>
@@ -236,7 +202,7 @@ const ShoppingBag = () => {
         <h1 className="page-title">SHOPPING BAG</h1>
         
         <div id="bag-content">
-          {shoppingBag.length === 0 ? renderEmptyBag() : renderBagContent()}
+          {cart.length === 0 ? renderEmptyBag() : renderBagContent()}
         </div>
       </section>
 

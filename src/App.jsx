@@ -49,7 +49,7 @@ const App = () => {
           </Route>
 
         </Routes>
-      </RouteLoader>
+      </RouteLoader>  
     </Router>
   );
 };

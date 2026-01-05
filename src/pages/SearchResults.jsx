@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "../assets/styles/search-results.css";
-import productsData from "../data/products";
+import { productService } from "../services/api";
 
 const SearchResults = () => {
   const location = useLocation();
@@ -9,9 +9,7 @@ const SearchResults = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  // Import product data
-  
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -25,27 +23,19 @@ const SearchResults = () => {
     }
   }, [location.search]);
 
-  const performSearch = (query) => {
+  const performSearch = async (query) => {
     setIsLoading(true);
-    
-    // Convert products object to array
-    const productsArray = Object.values(productsData);
-    
-    const results = productsArray.filter(product => {
-      const searchLower = query.toLowerCase();
-      return (
-        product.name.toLowerCase().includes(searchLower) ||
-        product.brand.toLowerCase().includes(searchLower) ||
-        product.category.toLowerCase().includes(searchLower) ||
-        product.description.toLowerCase().includes(searchLower)
-      );
-    });
-
-    // Simulate API delay
-    setTimeout(() => {
+    setError(null);
+    try {
+      const results = await productService.searchProducts(query);
       setSearchResults(results);
+    } catch (err) {
+      console.error("Search error:", err);
+      setError("Failed to search products. Please try again.");
+      setSearchResults([]);
+    } finally {
       setIsLoading(false);
-    }, 300);
+    }
   };
 
   const handleProductClick = (productId) => {

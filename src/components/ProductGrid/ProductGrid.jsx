@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import productDetails from "../../data/products";
+import { productService } from "../../services/api";
 import "../../assets/styles/homepage.css";
 import "../../assets/styles/product-grid.css";
 
@@ -15,26 +15,37 @@ const CATEGORY_LABELS = {
 
 const ProductGrid = () => {
   const [category, setCategory] = useState("all");
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Convert productDetails object to array
-  const products = useMemo(() => {
-    return Object.values(productDetails || {});
-  }, []);
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const params = category === 'all' ? {} : { category };
+        const data = await productService.getAllProducts(params);
+        setProducts(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching products:", err);
+        setError("Failed to load products. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredProducts = useMemo(() => {
-    if (category === "all") return products;
-
-    return products.filter(
-      (product) =>
-        product.category &&
-        product.category.toLowerCase() === category
-    );
-  }, [category, products]);
+    fetchProducts();
+  }, [category]);
 
   const goToProductDetail = (product) => {
     navigate(`/product/${product.id}`);
   };
+
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
 
   return (
     <section className="product-grid-wrapper">
@@ -51,7 +62,7 @@ const ProductGrid = () => {
             {CATEGORY_LABELS[category]}
           </span>
           <span className="product-count">
-            {filteredProducts.length} products
+            {loading ? "..." : products.length} products
           </span>
         </div>
       </div>
@@ -64,6 +75,7 @@ const ProductGrid = () => {
               category === key ? "active" : ""
             }`}
             onClick={() => setCategory(key)}
+            disabled={loading}
           >
             {key === "all"
               ? "All"
@@ -72,51 +84,52 @@ const ProductGrid = () => {
         ))}
       </div>
 
-      <div className="product-grid">
-        {filteredProducts.length > 0 ? (
-          filteredProducts.map((product) => (
-            <div
-              className="product-card"
-              key={product.id}
-              onClick={() => goToProductDetail(product)}
-            >
-              <div className="product-image">
-                <img
-                  src={product.images && product.images[0]}
-                  alt={product.name}
-                  onError={(e) => {
-                    e.target.onerror = null;
-                    e.target.src = "https://via.placeholder.com/300x400?text=Product+Image";
-                  }}
-                />
-              </div>
+      {loading ? (
+        <div className="loading-spinner" style={{ textAlign: "center", padding: "40px" }}>
+          Loading products...
+        </div>
+      ) : (
+        <div className="product-grid">
+          {products.length > 0 ? (
+            products.map((product) => (
+              <div
+                className="product-card"
+                key={product.id}
+                onClick={() => goToProductDetail(product)}
+              >
+                <div className="product-image">
+                  <img
+                    src={product.images && product.images[0]}
+                    alt={product.name}
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = "https://via.placeholder.com/300x400?text=Product+Image";
+                    }}
+                  />
+                </div>
 
-              <div className="product-info">
-                <h3 className="product-title">
-                  {product.name}
-                </h3>
-                <div className="product-price">
-                  <span className="current-price">
-                    Rs. {product.price.toLocaleString()}.00
-                  </span>
-                  {product.originalPrice && (
-                    <span className="original-price">
-                      Rs. {product.originalPrice.toLocaleString()}.00
+                <div className="product-info">
+                  <h3 className="product-title">
+                    {product.name}
+                  </h3>
+                  <div className="product-price">
+                    <span className="current-price">
+                      Rs. {product.price.toLocaleString()}.00
                     </span>
-                  )}
-                </div>
-                <div className="product-brand">
-                  {product.brand}
+                    {product.originalPrice && (
+                      <span className="original-price">
+                        Rs. {product.originalPrice.toLocaleString()}.00
+                      </span>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        ) : (
-          <div className="no-products">
-            <p>No products found in this category.</p>
-          </div>
-        )}
-      </div>
+            ))
+          ) : (
+            <div className="no-products">No products found in this category.</div>
+          )}
+        </div>
+      )}
     </section>
   );
 };

@@ -24,6 +24,8 @@ const Header = ({ variant = "default" }) => {
   
   const searchRef = useRef(null);
   const inputRef = useRef(null);
+  const searchRequestIdRef = useRef(0);
+  const searchDebounceRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,6 +51,7 @@ const Header = ({ variant = "default" }) => {
 
   // Perform search
   const performSearch = async (query) => {
+     const requestId = ++searchRequestIdRef.current;
      if (!query.trim()) {
     setSearchResults([]);
     return;
@@ -58,12 +61,15 @@ const Header = ({ variant = "default" }) => {
     
     try {
       const results = await productService.searchProducts(query);
+      if (requestId !== searchRequestIdRef.current) return;
       setSearchResults(results.slice(0, 10)); // Limit to 10 results
     } catch (err) {
       console.error("Search error:", err);
       setSearchResults([]);
     } finally {
-      setIsSearching(false);
+      if (requestId === searchRequestIdRef.current) {
+        setIsSearching(false);
+      }
     }
   };
 
@@ -71,7 +77,12 @@ const Header = ({ variant = "default" }) => {
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
-    performSearch(query);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      performSearch(query);
+    }, 180);
   };
 
   // Handle search submission

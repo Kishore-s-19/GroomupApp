@@ -2,7 +2,7 @@ import axios from 'axios';
 import { mockProducts } from './mockData';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true' || true; // Default to true for now
+const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? 'true') === 'true';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -170,13 +170,25 @@ export const productService = {
     if (USE_MOCK) {
       await delay(400);
       if (!query) return [];
-      const lowerQuery = query.toLowerCase();
-      return mockProducts.filter(p => 
-        p.name.toLowerCase().includes(lowerQuery) || 
-        p.brand.toLowerCase().includes(lowerQuery) ||
-        p.category.toLowerCase().includes(lowerQuery) ||
-        p.description.toLowerCase().includes(lowerQuery)
-      );
+      const normalize = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const q = String(query ?? "").trim();
+      const nq = normalize(q);
+      const nq2 = nq.endsWith("s") ? nq.slice(0, -1) : nq;
+
+      return mockProducts.filter((p) => {
+        const name = normalize(p.name);
+        const brand = normalize(p.brand);
+        const category = normalize(p.category);
+        const description = normalize(p.description);
+
+        return (
+          name.includes(nq) ||
+          brand.includes(nq) ||
+          category.includes(nq) ||
+          description.includes(nq) ||
+          (nq2 && (name.includes(nq2) || brand.includes(nq2) || category.includes(nq2) || description.includes(nq2)))
+        );
+      });
     }
     return api.get('/products/search', { params: { query } });
   }

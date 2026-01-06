@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { cartService } from '../services/api';
 import { useAuth } from './AuthContext';
 
@@ -18,19 +18,9 @@ export const CartProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const { isAuthenticated } = useAuth();
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchCart();
-    } else {
-      // Load cart from localStorage for guest users
-      const savedCart = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
-      setCart(savedCart);
-    }
-  }, [isAuthenticated]);
-
-  const fetchCart = async () => {
+  const fetchCart = useCallback(async () => {
     if (!isAuthenticated) return;
-    
+
     try {
       setLoading(true);
       const response = await cartService.getCart();
@@ -41,7 +31,17 @@ export const CartProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchCart();
+    } else {
+      // Load cart from localStorage for guest users
+      const savedCart = JSON.parse(localStorage.getItem('groomupShoppingBag')) || [];
+      setCart(savedCart);
+    }
+  }, [isAuthenticated, fetchCart]);
 
   const addToCart = async (product, color, size, quantity = 1) => {
     const itemData = {

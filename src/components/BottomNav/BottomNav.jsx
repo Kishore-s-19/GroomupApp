@@ -16,6 +16,8 @@ const BottomNav = () => {
   const [results, setResults] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef(null);
+  const searchRequestIdRef = useRef(0);
+  const searchDebounceRef = useRef(null);
 
   const isActive = (path) => location.pathname === path;
 
@@ -26,6 +28,7 @@ const BottomNav = () => {
   }, [searchOpen]);
 
   const performSearch = async (q) => {
+    const requestId = ++searchRequestIdRef.current;
     if (!q.trim()) {
       setResults([]);
       return;
@@ -33,24 +36,36 @@ const BottomNav = () => {
     setIsLoading(true);
     try {
       const r = await productService.searchProducts(q);
+      if (requestId !== searchRequestIdRef.current) return;
       setResults(r.slice(0, 8));
     } catch {
       setResults([]);
     } finally {
-      setIsLoading(false);
+      if (requestId === searchRequestIdRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   const onQueryChange = (e) => {
     const q = e.target.value;
     setQuery(q);
-    performSearch(q);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      performSearch(q);
+    }, 180);
   };
 
   const closeSearch = () => {
     setSearchOpen(false);
     setQuery("");
     setResults([]);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
   };
 
   const commitSearchHistory = (term) => {

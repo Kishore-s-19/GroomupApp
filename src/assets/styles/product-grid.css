@@ -8,6 +8,48 @@
   font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
 }
 
+.product-grid-loading {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.product-grid-loading .loading-logo {
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--primary-color, #c12657);
+  font-family: 'MADE Outer Sans', 'Inter', 'Segoe UI', Arial, sans-serif;
+  animation: productGridPulse 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes productGridPulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 520px) {
+  .product-grid-loading .loading-logo {
+    font-size: 2.4rem;
+  }
+}
+
 /* ================= CATEGORY FILTER ================= */
 
 .product-filters {
@@ -86,7 +128,7 @@
 }
 
 /* TITLE */
-.product-title {
+.product-grid-wrapper .product-title {
   font-size: 1rem;
   font-weight: 500;
   color: #111;
@@ -95,10 +137,21 @@
 }
 
 /* PRICE */
-.product-price {
+.product-grid-wrapper .product-price {
   font-size: 1.05rem;
   font-weight: 600;
   color: #c12657;
+}
+
+.product-grid-wrapper .current-price {
+  font-size: 1em;
+}
+
+.product-grid-wrapper .original-price {
+  font-size: 0.9em;
+  color: #999;
+  text-decoration: line-through;
+  margin-left: 10px;
 }
 
 /* ================= RESPONSIVE ================= */
@@ -130,14 +183,29 @@
   }
 
   .product-image {
-    aspect-ratio: 1 / 1.2;
+    height: 240px;
+    aspect-ratio: 1 / 0.75;
   }
 
-  .product-title {
+  .product-grid-wrapper .product-title {
+    font-size: 0.82rem;
+    line-height: 1.25;
+    margin-bottom: 6px;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+
+  .product-grid-wrapper .product-price {
     font-size: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: baseline;
   }
 
-  .product-price {
-    font-size: 1rem;
+  .product-info {
+    padding: 6px 9px 8px;
   }
 }

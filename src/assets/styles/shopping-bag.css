@@ -448,3 +448,37 @@
     color: var(--text-light);
     font-size: 0.9rem;
 }
+
+@media (max-width: 520px) {
+    .services {
+        padding: 18px 4%;
+        margin-top: 24px;
+    }
+
+    .services-container {
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 14px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .service-item {
+        min-width: 165px;
+        flex: 0 0 auto;
+    }
+
+    .service-item i {
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+    }
+
+    .service-item h3 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+    }
+
+    .service-item p {
+        font-size: 0.78rem;
+    }
+}

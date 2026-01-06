@@ -91,7 +91,6 @@ const ProductDetail = () => {
     return (
       <div className="loading-container">
         <div className="loading-logo">GROOMUP</div>
-        <p>Loading product details...</p>
       </div>
     );
   }

@@ -13,6 +13,7 @@ const slides = [
       "Discover our advanced serums for healthier hair and glowing skin",
     cta: "Shop Serum",
     align: "left",
+    category: "serum",
   },
   {
     id: 1,
@@ -22,6 +23,7 @@ const slides = [
     description: "Laid-back comfort meets effortless charm",
     cta: "Shop T-Shirts",
     align: "left",
+    category: "tshirts",
   },
   {
     id: 2,
@@ -31,7 +33,8 @@ const slides = [
     description: "From casual to formal, find your perfect style",
     cta: "Shop Shirts",
     align: "left",
-    fit:"editorial",
+    fit: "editorial",
+    category: "shirts",
   },
   {
     id: 3,
@@ -41,11 +44,12 @@ const slides = [
     description: "From casual to formal, find your perfect fit",
     cta: "Shop Bottoms",
     align: "right",
-    fit:"editorial",
+    fit: "editorial",
+    category: "bottoms",
   },
 ];
 
-const HeroSlider = () => {
+const HeroSlider = ({ onCategoryChange }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const intervalRef = useRef(null);
 
@@ -62,6 +66,12 @@ const HeroSlider = () => {
     startAutoSlide();
   };
 
+  const handleSlideClick = (slide) => {
+    if (slide.category && typeof onCategoryChange === "function") {
+      onCategoryChange(slide.category);
+    }
+  };
+
   useEffect(() => {
     startAutoSlide();
     return () => clearInterval(intervalRef.current);
@@ -74,24 +84,27 @@ const HeroSlider = () => {
           <div
             key={slide.id}
             className={`hero-slide ${index === currentSlide ? "active" : ""}`}
+            onClick={() => handleSlideClick(slide)}
           >
             {slide.type === "video" ? (
-              <div className="video-container">
+              <div
+                className="video-container"
+              >
                 <video autoPlay muted loop playsInline>
                   <source src={slide.src} />
                 </video>
               </div>
             ) : (
               <div
-                  className={`hero-bg ${
-                   index === 2
-                   ? "hero-bg-2"
-                   : index === 3
-                   ? "hero-bg-3"
+                className={`hero-bg ${
+                  index === 2
+                    ? "hero-bg-2"
+                    : index === 3
+                    ? "hero-bg-3"
                     : ""
-                     }`}
-                     style={{ backgroundImage: `url(${slide.src})` }}
-                      />
+                }`}
+                style={{ backgroundImage: `url(${slide.src})` }}
+              />
 
 
 
@@ -109,7 +122,6 @@ const HeroSlider = () => {
             >
               <h1>{slide.title}</h1>
               <p>{slide.description}</p>
-              <button className="cta-button">{slide.cta}</button>
             </div>
           </div>
         ))}
@@ -121,7 +133,10 @@ const HeroSlider = () => {
           <div
             key={index}
             className={`indicator ${index === currentSlide ? "active" : ""}`}
-            onClick={() => goToSlide(index)}
+            onClick={(e) => {
+              e.stopPropagation();
+              goToSlide(index);
+            }}
           >
             {index === currentSlide && (
               <span

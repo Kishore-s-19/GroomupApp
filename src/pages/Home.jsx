@@ -10,6 +10,8 @@ import "../assets/styles/homepage.css";
 const Home = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [subscriberEmail, setSubscriberEmail] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [categoryChangeSource, setCategoryChangeSource] = useState("initial");
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -25,16 +27,34 @@ const Home = () => {
     setShowPopup(false);
   };
 
+  const handleHeroCategoryChange = (category) => {
+    setCategoryChangeSource("hero");
+    setSelectedCategory(category);
+    setTimeout(() => {
+      const el = document.getElementById("product-grid");
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  };
+
+  const handleGridCategoryChange = (category) => {
+    setCategoryChangeSource("filters");
+    setSelectedCategory(category);
+  };
+
   return (
     <>
     <div className="home-page">
       
 
       {/* HERO SLIDER */}
-      <HeroSlider />
+      <HeroSlider onCategoryChange={handleHeroCategoryChange} />
 
       {/* PRODUCTS / COLLECTIONS */}
-      <ProductGrid />
+      <ProductGrid
+        selectedCategory={selectedCategory}
+        onCategoryChange={handleGridCategoryChange}
+        categoryChangeSource={categoryChangeSource}
+      />
 
       {/* SERVICES SECTION */}
       <section className="services">

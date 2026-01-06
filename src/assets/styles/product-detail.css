@@ -601,20 +601,31 @@
 
 /* Loading */
 .loading-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #fff;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 400px;
+  z-index: 9999;
 }
 
 .loading-logo {
   font-size: 3rem;
   font-weight: 700;
-  color: #c12657;
+  color: var(--primary-color, #c12657);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.8; transform: scale(1.1); }
+}
+
+@media (max-width: 520px) {
+  .loading-logo {
+    font-size: 2.4rem;
+  }
 }

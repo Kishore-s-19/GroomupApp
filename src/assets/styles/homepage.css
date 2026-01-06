@@ -207,6 +207,39 @@
     border-radius: var(--radius-sm);
   }
 }
+
+@media (max-width: 520px) {
+  .services {
+    padding: 18px 4%;
+  }
+
+  .services-container {
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    gap: 14px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .service-item {
+    min-width: 165px;
+    flex: 0 0 auto;
+  }
+
+  .service-item i {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+  }
+
+  .service-item h3 {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+  }
+
+  .service-item p {
+    font-size: 0.78rem;
+  }
+}
 /* ===== HEADER ACTION LINKS (ZIP MATCH) ===== */
 .header-actions {
   display: flex;
@@ -291,6 +324,83 @@
 .product-count {
   font-size: 0.95rem;
   color: var(--text-light);
+}
+
+@media (max-width: 520px) {
+  .product-grid-wrapper {
+    padding: 12px 4% 16px;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+
+  .breadcrumb {
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+  }
+
+  .section-title-right {
+    align-items: center;
+    gap: 6px;
+  }
+
+  .section-title-text {
+    font-size: 1.4rem;
+  }
+
+  .product-count {
+    font-size: 0.8rem;
+  }
+
+  .services {
+    padding: 26px 5%;
+  }
+
+  .services-container {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .service-item {
+    min-width: 0;
+  }
+
+  .service-item i {
+    font-size: 1.7rem;
+    margin-bottom: 8px;
+  }
+
+  .service-item h3 {
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+
+  .service-item p {
+    font-size: 0.78rem;
+  }
+
+  .newsletter {
+    padding: 28px 5%;
+  }
+
+  .newsletter h2 {
+    font-size: 1.45rem;
+    margin-bottom: 10px;
+  }
+
+  .newsletter p {
+    margin-bottom: 18px;
+  }
+
+  .newsletter-form button {
+    padding: 14px 18px;
+    min-height: 48px;
+  }
 }
 
 

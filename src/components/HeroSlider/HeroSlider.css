@@ -16,11 +16,13 @@
   inset: 0;
   opacity: 0;
   transition: opacity 1s ease-in-out;
+  pointer-events: none;
 }
 
 .hero-slide.active {
   opacity: 1;
   z-index: 1;
+  pointer-events: auto;
 }
 
 /* BACKGROUND */
@@ -169,4 +171,59 @@
 
   /* center subject */
   background-position: center center;
+}
+
+@media (max-width: 520px) {
+  .hero {
+    height: 50vh;
+  }
+
+  .hero-bg {
+    background-size: cover;
+    background-position: center;
+  }
+
+  .hero-bg,
+  .video-container {
+    cursor: pointer;
+  }
+
+  .hero-content {
+    top: 14%;
+    left: 5%;
+    right: 5%;
+    max-width: none;
+  }
+
+  .hero-content-right {
+    top: 14%;
+    right: 5%;
+    left: 5%;
+  }
+
+  .hero-content-first {
+    top: 14%;
+    left: 5%;
+  }
+
+  .hero-content h1 {
+    font-size: 1.35rem;
+    line-height: 1.2;
+    margin-bottom: 10px;
+  }
+
+  .hero-content p {
+    font-size: 0.82rem;
+    line-height: 1.25;
+    margin-bottom: 0;
+  }
+
+  .cta-button {
+    display: none;
+  }
+
+  .slider-indicators {
+    bottom: 14px;
+    gap: 10px;
+  }
 }

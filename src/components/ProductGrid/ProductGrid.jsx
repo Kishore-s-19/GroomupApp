@@ -13,12 +13,25 @@ const CATEGORY_LABELS = {
   accessories: "Accessories",
 };
 
-const ProductGrid = () => {
-  const [category, setCategory] = useState("all");
+const ProductGrid = ({
+  selectedCategory,
+  onCategoryChange,
+  categoryChangeSource,
+}) => {
+  const [category, setCategory] = useState(selectedCategory ?? "all");
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  const showLoadingTransition =
+    loading && (products.length === 0 || categoryChangeSource !== "hero");
+
+  useEffect(() => {
+    if (!selectedCategory) return;
+    if (selectedCategory === category) return;
+    setCategory(selectedCategory);
+  }, [selectedCategory, category]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -39,6 +52,13 @@ const ProductGrid = () => {
     fetchProducts();
   }, [category]);
 
+  const handleCategoryChange = (nextCategory) => {
+    setCategory(nextCategory);
+    if (typeof onCategoryChange === "function") {
+      onCategoryChange(nextCategory);
+    }
+  };
+
   const goToProductDetail = (product) => {
     navigate(`/product/${product.id}`);
   };
@@ -48,7 +68,7 @@ const ProductGrid = () => {
   }
 
   return (
-    <section className="product-grid-wrapper">
+    <section className="product-grid-wrapper" id="product-grid">
       <div className="section-header">
         <div className="breadcrumb">
           <span>Home</span> &gt; <span>Collection</span> &gt;{" "}
@@ -74,7 +94,7 @@ const ProductGrid = () => {
             className={`product-filter-btn ${
               category === key ? "active" : ""
             }`}
-            onClick={() => setCategory(key)}
+            onClick={() => handleCategoryChange(key)}
             disabled={loading}
           >
             {key === "all"
@@ -84,9 +104,9 @@ const ProductGrid = () => {
         ))}
       </div>
 
-      {loading ? (
-        <div className="loading-spinner" style={{ textAlign: "center", padding: "40px" }}>
-          Loading products...
+      {showLoadingTransition ? (
+        <div className="product-grid-loading">
+          <div className="loading-logo">GROOMUP</div>
         </div>
       ) : (
         <div className="product-grid">

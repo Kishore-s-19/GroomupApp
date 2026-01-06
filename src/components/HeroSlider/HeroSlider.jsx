@@ -51,7 +51,11 @@ const slides = [
 
 const HeroSlider = ({ onCategoryChange }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
   const intervalRef = useRef(null);
+  const touchStartXRef = useRef(null);
+  const touchStartYRef = useRef(null);
+  const didSwipeRef = useRef(false);
 
   const startAutoSlide = () => {
     clearInterval(intervalRef.current);
@@ -66,7 +70,19 @@ const HeroSlider = ({ onCategoryChange }) => {
     startAutoSlide();
   };
 
+  const goToPrevSlide = () => {
+    goToSlide((currentSlide - 1 + slides.length) % slides.length);
+  };
+
+  const goToNextSlide = () => {
+    goToSlide((currentSlide + 1) % slides.length);
+  };
+
   const handleSlideClick = (slide) => {
+    if (didSwipeRef.current) {
+      didSwipeRef.current = false;
+      return;
+    }
     if (slide.category && typeof onCategoryChange === "function") {
       onCategoryChange(slide.category);
     }
@@ -77,9 +93,60 @@ const HeroSlider = ({ onCategoryChange }) => {
     return () => clearInterval(intervalRef.current);
   }, []);
 
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
+
+  const handleTouchStart = (e) => {
+    if (!isMobile) return;
+    if (!e.touches || e.touches.length !== 1) return;
+    didSwipeRef.current = false;
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (!isMobile) return;
+    if (touchStartXRef.current == null || touchStartYRef.current == null) return;
+
+    const changed = e.changedTouches && e.changedTouches[0];
+    if (!changed) return;
+
+    const dx = changed.clientX - touchStartXRef.current;
+    const dy = changed.clientY - touchStartYRef.current;
+
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+
+    if (Math.abs(dx) < 45) return;
+    if (Math.abs(dy) > Math.abs(dx) * 0.7) return;
+
+    didSwipeRef.current = true;
+
+    if (dx < 0) {
+      goToPrevSlide();
+    } else {
+      goToNextSlide();
+    }
+  };
+
   return (
     <section className="hero">
-      <div className="hero-slider">
+      <div
+        className="hero-slider"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {slides.map((slide, index) => (
           <div
             key={slide.id}
@@ -118,7 +185,7 @@ const HeroSlider = ({ onCategoryChange }) => {
               }
               ${index === 0 ? "hero-content-first" : ""
 
-              }`}
+              } hero-text-slide-${slide.id}`}
             >
               <h1>{slide.title}</h1>
               <p>{slide.description}</p>

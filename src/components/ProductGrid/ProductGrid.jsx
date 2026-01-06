@@ -22,10 +22,27 @@ const ProductGrid = ({
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
 
   const showLoadingTransition =
-    loading && (products.length === 0 || categoryChangeSource !== "hero");
+    loading &&
+    (products.length === 0 ||
+      (!isMobile && categoryChangeSource !== "hero"));
+
+  useEffect(() => {
+    const media = window.matchMedia("(max-width: 768px)");
+    const update = () => setIsMobile(media.matches);
+    update();
+
+    if (typeof media.addEventListener === "function") {
+      media.addEventListener("change", update);
+      return () => media.removeEventListener("change", update);
+    }
+
+    media.addListener(update);
+    return () => media.removeListener(update);
+  }, []);
 
   useEffect(() => {
     if (!selectedCategory) return;

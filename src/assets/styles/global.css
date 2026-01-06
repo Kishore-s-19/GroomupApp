@@ -125,6 +125,10 @@ img {
     height: 45px;
     font-size: 20px;
   }
+
+  #root {
+    padding-bottom: calc(92px + env(safe-area-inset-bottom));
+  }
 }
 
 #root {

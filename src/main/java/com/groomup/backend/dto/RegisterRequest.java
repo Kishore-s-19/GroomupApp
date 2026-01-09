@@ -22,7 +22,13 @@ public class RegisterRequest {
     @Size(min = 7, max = 20)
     private String phone;
 
+    // OPTIONAL: role (USER / ADMIN)
+    // If not sent, backend should default to USER
+    private String role;
+
     public RegisterRequest() {}
+
+    // ---------- GETTERS & SETTERS ----------
 
     public String getName() {
         return name;
@@ -35,25 +41,32 @@ public class RegisterRequest {
     public String getEmail() {
         return email;
     }
-
+    
     public void setEmail(String email) {
         this.email = email;
     }
-
+    
     public String getPassword() {
         return password;
     }
-
+    
     public void setPassword(String password) {
         this.password = password;
     }
-
+    
     public String getPhone() {
         return phone;
     }
-
+    
     public void setPhone(String phone) {
         this.phone = phone;
     }
-}
 
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+}

@@ -2,6 +2,7 @@ package com.groomup.backend.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -21,7 +22,10 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, UserDetailsService userDetailsService) {
+    public SecurityConfig(
+            JwtAuthenticationFilter jwtAuthFilter,
+            UserDetailsService userDetailsService
+    ) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
     }
@@ -30,23 +34,64 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+            // ❌ Disable CSRF (REST API)
             .csrf(csrf -> csrf.disable())
+
+            // ✅ Enable CORS
             .cors(Customizer.withDefaults())
+
+            // ❌ Disable form & basic auth
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
-            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+            // ✅ JWT = Stateless
+            .sessionManagement(sess ->
+                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+
+            // 🔐 AUTHORIZATION RULES (ORDER MATTERS)
             .authorizeHttpRequests(auth -> auth
+
+                // 🔓 PUBLIC – auth endpoints
+                .requestMatchers("/api/auth/**").permitAll()
+
+                // 🔓 PUBLIC – product READ
+                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+
+                // 🔒 USER – must be logged in (JWT)
                 .requestMatchers(
-                    "/api/auth/**",
-                    "/api/products/**"
-                ).permitAll()
+                        "/api/cart/**",
+                        "/api/profile/**",
+                        "/api/users/me",
+                        "/api/orders/**"
+                ).authenticated()
+
+                // 🔒 ADMIN – product WRITE
+             // 🔒 ADMIN – product WRITE
+                .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+
+
+                // 🔒 Everything else
                 .anyRequest().authenticated()
             )
+
+            // Authentication provider
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
+            // JWT filter
+            .addFilterBefore(
+                    jwtAuthFilter,
+                    UsernamePasswordAuthenticationFilter.class
+            );
 
         return http.build();
     }
+
+    // =========================
+    // AUTH BEANS
+    // =========================
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -55,13 +100,16 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
-        authProvider.setPasswordEncoder(passwordEncoder());
-        return authProvider;
+        DaoAuthenticationProvider provider =
+                new DaoAuthenticationProvider(userDetailsService);
+        provider.setPasswordEncoder(passwordEncoder());
+        return provider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration config
+    ) throws Exception {
         return config.getAuthenticationManager();
     }
 }

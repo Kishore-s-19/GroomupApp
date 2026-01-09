@@ -2,7 +2,6 @@ package com.groomup.backend.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -22,10 +21,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
-    public SecurityConfig(
-            JwtAuthenticationFilter jwtAuthFilter,
-            UserDetailsService userDetailsService
-    ) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
     }
@@ -34,57 +30,23 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            // Disable CSRF for APIs
             .csrf(csrf -> csrf.disable())
-
-            // Enable CORS
             .cors(Customizer.withDefaults())
-
-            // Stateless session (JWT)
-            .sessionManagement(sess ->
-                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
-
-            // Disable default authentication mechanisms
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
-
-            // 🔐 AUTHORIZATION RULES (ORDER MATTERS)
+            .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-
-            		  // 🔓 AUTH ENDPOINTS (MUST BE FIRST)
-            	    .requestMatchers("/api/auth/**").permitAll()
-            	    
-            	    // 🔓 PUBLIC – product READ ONLY
-            	    .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
-
-            	    // 🔒 ADMIN – product WRITE operations
-            	
-            	    .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-            	    .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
-            	    .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
-
-
-            	    // 🔒 Everything else requires authentication
-            	    .anyRequest().authenticated()
-            	)
-
-
-            // Authentication provider
+                .requestMatchers(
+                    "/api/auth/**",
+                    "/api/products/**"
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
             .authenticationProvider(authenticationProvider())
-
-            // JWT filter
-            .addFilterBefore(
-                    jwtAuthFilter,
-                    UsernamePasswordAuthenticationFilter.class
-            );
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
-
-    // =========================
-    // AUTH BEANS
-    // =========================
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -93,16 +55,13 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
-        provider.setPasswordEncoder(passwordEncoder());
-        return provider;
+        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);
+        authProvider.setPasswordEncoder(passwordEncoder());
+        return authProvider;
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config
-    ) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }

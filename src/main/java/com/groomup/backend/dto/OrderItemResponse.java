@@ -2,29 +2,19 @@ package com.groomup.backend.dto;
 
 import java.math.BigDecimal;
 
-public class CartItemResponse {
-    private Long id;
+public class OrderItemResponse {
     private Long productId;
     private String productName;
     private String productImage;
     private BigDecimal price;
     private int quantity;
 
-    public CartItemResponse(Long id, Long productId, String productName, String productImage, BigDecimal price, int quantity) {
-        this.id = id;
+    public OrderItemResponse(Long productId, String productName, String productImage, BigDecimal price, int quantity) {
         this.productId = productId;
         this.productName = productName;
         this.productImage = productImage;
         this.price = price;
         this.quantity = quantity;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public Long getProductId() {

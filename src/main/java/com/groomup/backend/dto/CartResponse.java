@@ -1,23 +1,17 @@
 package com.groomup.backend.dto;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
 
 public class CartResponse {
-
     private Long id;
-    private List<CartItemResponse> items = new ArrayList<>();
-    private BigDecimal totalAmount;
-    private int totalItems;
+    private List<CartItemResponse> items;
+    private BigDecimal totalPrice;
 
-    public CartResponse() {}
-
-    public CartResponse(Long id, List<CartItemResponse> items, BigDecimal totalAmount, int totalItems) {
+    public CartResponse(Long id, List<CartItemResponse> items, BigDecimal totalPrice) {
         this.id = id;
         this.items = items;
-        this.totalAmount = totalAmount;
-        this.totalItems = totalItems;
+        this.totalPrice = totalPrice;
     }
 
     public Long getId() {
@@ -36,20 +30,11 @@ public class CartResponse {
         this.items = items;
     }
 
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
     }
 
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public int getTotalItems() {
-        return totalItems;
-    }
-
-    public void setTotalItems(int totalItems) {
-        this.totalItems = totalItems;
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
     }
 }
-

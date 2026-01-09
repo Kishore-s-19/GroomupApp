@@ -1,6 +1,7 @@
 package com.groomup.backend.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "cart_items")
@@ -20,12 +21,26 @@ public class CartItem {
 
     private int quantity;
 
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
     public CartItem() {}
 
     public CartItem(Cart cart, Product product, int quantity) {
         this.cart = cart;
         this.product = product;
         this.quantity = quantity;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 
     public Long getId() {
@@ -58,5 +73,21 @@ public class CartItem {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(LocalDateTime createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 }

@@ -3,7 +3,6 @@ package com.groomup.backend.controller;
 import com.groomup.backend.dto.CartRequest;
 import com.groomup.backend.dto.CartResponse;
 import com.groomup.backend.service.CartService;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -26,6 +25,11 @@ public class CartController {
         return cartService.addToCart(request.getProductId(), request.getQuantity());
     }
 
+    @PostMapping
+    public CartResponse addToCartLegacy(@RequestBody CartRequest request) {
+        return cartService.addToCart(request.getProductId(), request.getQuantity());
+    }
+
     @PutMapping("/items/{itemId}")
     public CartResponse updateCartItem(@PathVariable Long itemId, @RequestBody CartRequest request) {
         return cartService.updateCartItemQuantity(itemId, request.getQuantity());
@@ -34,5 +38,10 @@ public class CartController {
     @DeleteMapping("/items/{itemId}")
     public CartResponse removeFromCart(@PathVariable Long itemId) {
         return cartService.removeFromCart(itemId);
+    }
+
+    @DeleteMapping
+    public CartResponse clearCart() {
+        return cartService.clearMyCart();
     }
 }

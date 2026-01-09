@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
@@ -46,6 +47,9 @@ public class CartService {
     }
 
     public CartResponse addToCart(Long productId, int quantity) {
+        if (quantity <= 0) {
+            throw new ResponseStatusException(BAD_REQUEST, "Quantity must be greater than 0");
+        }
         User user = getCurrentUser();
         Cart cart = getOrCreateCart(user);
         Product product = productRepository.findById(productId)
@@ -62,9 +66,18 @@ public class CartService {
         } else {
             CartItem newItem = new CartItem(cart, product, quantity);
             cart.addItem(newItem);
-            cartRepository.save(cart); // Cascades save to new item
+            cartItemRepository.save(newItem);
         }
 
+        Cart refreshedCart = cartRepository.findById(cart.getId()).orElse(cart);
+        return toCartResponse(refreshedCart);
+    }
+
+    public CartResponse clearMyCart() {
+        User user = getCurrentUser();
+        Cart cart = getOrCreateCart(user);
+        cart.getItems().clear();
+        cartRepository.save(cart);
         return toCartResponse(cart);
     }
 

@@ -25,6 +25,7 @@ public class Product {
 
     private String category;
 
+    @Column(name = "stock_quantity", nullable = false)
     private int stockQuantity;
 
     private LocalDateTime createdAt;

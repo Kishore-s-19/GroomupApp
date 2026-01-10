@@ -61,6 +61,13 @@ public class SecurityConfig {
                 // 🔓 PUBLIC – product READ
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
 
+                // 🔒 ADMIN – orders admin endpoints
+                .requestMatchers(HttpMethod.GET, "/api/orders/all").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/orders/*/status").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/orders/*/items").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/orders/*/items/*").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/orders/*/items/*").hasRole("ADMIN")
+
                 // 🔒 USER – must be logged in (JWT)
                 .requestMatchers(
                         "/api/cart/**",

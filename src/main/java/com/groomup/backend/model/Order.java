@@ -14,44 +14,67 @@ public class Order {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ================= RELATIONS =================
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(
+            mappedBy = "order",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
     private List<OrderItem> items = new ArrayList<>();
 
-    private BigDecimal totalPrice;
+    // ================= FIELDS =================
+
+    @Column(name = "total_amount", nullable = false)
+    private BigDecimal totalAmount;
 
     private String status; // PENDING, DELIVERED, CANCELLED
 
     private String shippingAddress;
 
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // ================= CONSTRUCTOR =================
 
     public Order() {}
 
+    // ================= JPA LIFECYCLE =================
+
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-        if (status == null) {
-            status = "PENDING";
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        if (this.status == null) {
+            this.status = "PENDING";
         }
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
     }
+
+    // ================= HELPERS =================
 
     public void addItem(OrderItem item) {
         items.add(item);
         item.setOrder(this);
     }
 
-    // Getters and Setters
+    public void removeItem(OrderItem item) {
+        items.remove(item);
+        item.setOrder(null);
+    }
+
+    // ================= GETTERS & SETTERS =================
 
     public Long getId() {
         return id;
@@ -77,12 +100,13 @@ public class Order {
         this.items = items;
     }
 
-    public BigDecimal getTotalPrice() {
-        return totalPrice;
+    // ✅ CORRECT & CONSISTENT NAMING
+    public BigDecimal getTotalAmount() {
+        return totalAmount;
     }
 
-    public void setTotalPrice(BigDecimal totalPrice) {
-        this.totalPrice = totalPrice;
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public String getStatus() {

@@ -3,6 +3,7 @@ package com.groomup.backend.dto;
 import java.math.BigDecimal;
 
 public class OrderItemResponse {
+    private Long id;
     private Long productId;
     private String productName;
     private String productImage;
@@ -10,11 +11,24 @@ public class OrderItemResponse {
     private int quantity;
 
     public OrderItemResponse(Long productId, String productName, String productImage, BigDecimal price, int quantity) {
+        this(null, productId, productName, productImage, price, quantity);
+    }
+
+    public OrderItemResponse(Long id, Long productId, String productName, String productImage, BigDecimal price, int quantity) {
+        this.id = id;
         this.productId = productId;
         this.productName = productName;
         this.productImage = productImage;
         this.price = price;
         this.quantity = quantity;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     public Long getProductId() {

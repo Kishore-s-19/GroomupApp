@@ -35,25 +35,23 @@ public class OrderService {
     private final CartRepository cartRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
-    private final CartService cartService;
 
     public OrderService(OrderRepository orderRepository,
                         OrderItemRepository orderItemRepository,
                         CartRepository cartRepository,
                         ProductRepository productRepository,
-                        UserRepository userRepository, CartService cartService) {
+                        UserRepository userRepository) {
         this.orderRepository = orderRepository;
         this.orderItemRepository = orderItemRepository;
         this.cartRepository = cartRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
-        this.cartService = cartService;
     }
 
     @Transactional
     public OrderResponse createOrder(OrderRequest request) {
         User user = getCurrentUser();
-        Cart cart = cartRepository.findByUser(user)
+        Cart cart = cartRepository.findByUserForUpdate(user)
                 .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Cart is empty"));
 
         if (cart.getItems().isEmpty()) {
@@ -92,7 +90,8 @@ public class OrderService {
         order.setTotalAmount(totalAmount);
         Order savedOrder = orderRepository.save(order);
 
-        cartService.clearCart(user);
+        cart.getItems().clear();
+        cartRepository.save(cart);
 
         return toOrderResponse(savedOrder);
     }

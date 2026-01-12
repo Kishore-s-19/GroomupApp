@@ -1,68 +1,47 @@
 package com.groomup.backend.model;
 
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+        @Index(name = "idx_orders_user_id", columnList = "user_id"),
+        @Index(name = "idx_orders_created_at", columnList = "createdAt")
+})
 public class Order {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ================= RELATIONS =================
-
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @OneToMany(
-            mappedBy = "order",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
+    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
-    // ================= FIELDS =================
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalPrice = BigDecimal.ZERO;
 
-    @Column(name = "total_amount", nullable = false)
-    private BigDecimal totalAmount;
+    @Column(nullable = false)
+    private String status;
 
-    private String status; // PENDING, DELIVERED, CANCELLED
-
+    @Column(nullable = false, length = 1024)
     private String shippingAddress;
 
-    @Column(name = "created_at")
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    // ================= CONSTRUCTOR =================
-
-    public Order() {}
-
-    // ================= JPA LIFECYCLE =================
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = LocalDateTime.now();
-        if (this.status == null) {
-            this.status = "PENDING";
-        }
+    public Order() {
     }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    // ================= HELPERS =================
 
     public void addItem(OrderItem item) {
         items.add(item);
@@ -73,8 +52,6 @@ public class Order {
         items.remove(item);
         item.setOrder(null);
     }
-
-    // ================= GETTERS & SETTERS =================
 
     public Long getId() {
         return id;
@@ -100,13 +77,12 @@ public class Order {
         this.items = items;
     }
 
-    // ✅ CORRECT & CONSISTENT NAMING
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
+    public BigDecimal getTotalPrice() {
+        return totalPrice;
     }
 
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
+    public void setTotalPrice(BigDecimal totalPrice) {
+        this.totalPrice = totalPrice;
     }
 
     public String getStatus() {
@@ -129,15 +105,19 @@ public class Order {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

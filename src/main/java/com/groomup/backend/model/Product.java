@@ -1,6 +1,7 @@
 package com.groomup.backend.model;
 
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -18,33 +19,24 @@ public class Product {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
     private String imageUrl;
 
     private String category;
 
-    @Column(name = "stock_quantity", nullable = false)
+    @Column(nullable = false)
     private int stockQuantity;
 
+    @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    @Column(nullable = false)
     private LocalDateTime updatedAt;
 
-    public Product() {}
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+    public Product() {
     }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
-
-    // Getters and Setters
 
     public Long getId() {
         return id;
@@ -106,15 +98,19 @@ public class Product {
         return createdAt;
     }
 
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
-    }
-
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
     }
 
-    public void setUpdatedAt(LocalDateTime updatedAt) {
-        this.updatedAt = updatedAt;
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

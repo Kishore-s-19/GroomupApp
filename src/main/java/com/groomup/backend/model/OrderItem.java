@@ -1,29 +1,43 @@
 package com.groomup.backend.model;
 
 import jakarta.persistence.*;
+
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "order_items")
+@Table(name = "order_items", indexes = {
+        @Index(name = "idx_order_items_order_id", columnList = "order_id"),
+        @Index(name = "idx_order_items_product_id", columnList = "product_id")
+})
 public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
+    @Column(nullable = false)
     private int quantity;
 
-    private BigDecimal price; // Price at the time of purchase
+    @Column(nullable = false, precision = 19, scale = 2)
+    private BigDecimal price;
 
-    public OrderItem() {}
+    @Column(nullable = false)
+    private LocalDateTime createdAt;
+
+    @Column(nullable = false)
+    private LocalDateTime updatedAt;
+
+    public OrderItem() {
+    }
 
     public OrderItem(Order order, Product product, int quantity, BigDecimal price) {
         this.order = order;
@@ -71,4 +85,25 @@ public class OrderItem {
     public void setPrice(BigDecimal price) {
         this.price = price;
     }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    @PrePersist
+    protected void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }
+

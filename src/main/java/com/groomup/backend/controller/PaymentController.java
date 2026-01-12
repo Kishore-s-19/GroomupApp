@@ -20,9 +20,4 @@ public class PaymentController {
     public PaymentResponse createPayment(@RequestBody @Valid PaymentRequest request) {
         return paymentService.createPayment(request);
     }
-
-    @PostMapping("/retry")
-    public PaymentResponse retryPayment(@RequestBody @Valid PaymentRequest request) {
-        return paymentService.retryPayment(request);
-    }
 }

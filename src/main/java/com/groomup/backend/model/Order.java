@@ -26,7 +26,7 @@ public class Order {
     private List<OrderItem> items = new ArrayList<>();
 
     @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal totalPrice = BigDecimal.ZERO;
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private String status;
@@ -78,11 +78,15 @@ public class Order {
     }
 
     public BigDecimal getTotalPrice() {
-        return totalPrice;
+        return totalAmount;
     }
 
     public void setTotalPrice(BigDecimal totalPrice) {
-        this.totalPrice = totalPrice;
+        this.totalAmount = totalPrice;
+    }
+
+    public void setTotalAmount(BigDecimal totalAmount) {
+        this.totalAmount = totalAmount;
     }
 
     public String getStatus() {

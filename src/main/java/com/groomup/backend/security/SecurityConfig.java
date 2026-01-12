@@ -61,16 +61,12 @@ public class SecurityConfig {
                 // 🔓 PUBLIC – product READ
                 .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
 
-                // 🔓 PUBLIC – payment webhooks
-                .requestMatchers("/api/payments/webhook/**").permitAll()
-
                 // 🔒 USER – must be logged in (JWT)
                 .requestMatchers(
                         "/api/cart/**",
                         "/api/profile/**",
                         "/api/users/me",
-                        "/api/orders/**",
-                        "/api/payments/**"
+                        "/api/orders/**"
                 ).authenticated()
 
                 // 🔒 ADMIN – product WRITE

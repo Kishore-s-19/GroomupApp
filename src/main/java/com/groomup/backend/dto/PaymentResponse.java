@@ -1,46 +1,39 @@
 package com.groomup.backend.dto;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 public class PaymentResponse {
 
     private Long paymentId;
     private Long orderId;
     private String provider;
-    private String gatewayKeyId;
     private String status;
     private BigDecimal amount;
     private String currency;
-    private Integer attemptNumber;
     private String gatewayOrderId;
-    private LocalDateTime expiresAt;
-    private LocalDateTime createdAt;
+    private String gatewayKeyId;
+
+    public PaymentResponse() {
+    }
 
     public PaymentResponse(
             Long paymentId,
             Long orderId,
             String provider,
-            String gatewayKeyId,
             String status,
             BigDecimal amount,
             String currency,
-            Integer attemptNumber,
             String gatewayOrderId,
-            LocalDateTime expiresAt,
-            LocalDateTime createdAt
+            String gatewayKeyId
     ) {
         this.paymentId = paymentId;
         this.orderId = orderId;
         this.provider = provider;
-        this.gatewayKeyId = gatewayKeyId;
         this.status = status;
         this.amount = amount;
         this.currency = currency;
-        this.attemptNumber = attemptNumber;
         this.gatewayOrderId = gatewayOrderId;
-        this.expiresAt = expiresAt;
-        this.createdAt = createdAt;
+        this.gatewayKeyId = gatewayKeyId;
     }
 
     public Long getPaymentId() {
@@ -67,14 +60,6 @@ public class PaymentResponse {
         this.provider = provider;
     }
 
-    public String getGatewayKeyId() {
-        return gatewayKeyId;
-    }
-
-    public void setGatewayKeyId(String gatewayKeyId) {
-        this.gatewayKeyId = gatewayKeyId;
-    }
-
     public String getStatus() {
         return status;
     }
@@ -99,14 +84,6 @@ public class PaymentResponse {
         this.currency = currency;
     }
 
-    public Integer getAttemptNumber() {
-        return attemptNumber;
-    }
-
-    public void setAttemptNumber(Integer attemptNumber) {
-        this.attemptNumber = attemptNumber;
-    }
-
     public String getGatewayOrderId() {
         return gatewayOrderId;
     }
@@ -115,19 +92,11 @@ public class PaymentResponse {
         this.gatewayOrderId = gatewayOrderId;
     }
 
-    public LocalDateTime getExpiresAt() {
-        return expiresAt;
+    public String getGatewayKeyId() {
+        return gatewayKeyId;
     }
 
-    public void setExpiresAt(LocalDateTime expiresAt) {
-        this.expiresAt = expiresAt;
-    }
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(LocalDateTime createdAt) {
-        this.createdAt = createdAt;
+    public void setGatewayKeyId(String gatewayKeyId) {
+        this.gatewayKeyId = gatewayKeyId;
     }
 }

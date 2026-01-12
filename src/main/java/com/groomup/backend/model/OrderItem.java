@@ -6,10 +6,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "order_items", indexes = {
-        @Index(name = "idx_order_items_order_id", columnList = "order_id"),
-        @Index(name = "idx_order_items_product_id", columnList = "product_id")
-})
+@Table(
+        name = "order_items",
+        indexes = {
+                @Index(name = "idx_order_items_order_id", columnList = "order_id"),
+                @Index(name = "idx_order_items_product_id", columnList = "product_id")
+        }
+)
 public class OrderItem {
 
     @Id
@@ -25,7 +28,7 @@ public class OrderItem {
     private Product product;
 
     @Column(nullable = false)
-    private int quantity;
+    private Integer quantity;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
@@ -39,7 +42,7 @@ public class OrderItem {
     public OrderItem() {
     }
 
-    public OrderItem(Order order, Product product, int quantity, BigDecimal price) {
+    public OrderItem(Order order, Product product, Integer quantity, BigDecimal price) {
         this.order = order;
         this.product = product;
         this.quantity = quantity;
@@ -70,11 +73,11 @@ public class OrderItem {
         this.product = product;
     }
 
-    public int getQuantity() {
+    public Integer getQuantity() {
         return quantity;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(Integer quantity) {
         this.quantity = quantity;
     }
 
@@ -106,4 +109,3 @@ public class OrderItem {
         this.updatedAt = LocalDateTime.now();
     }
 }
-

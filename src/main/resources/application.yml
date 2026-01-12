@@ -1,5 +1,5 @@
 razorpay:
-  base-url: ${RAZORPAY_BASE_URL:https://api.razorpay.com}
-  key-id: ${RAZORPAY_KEY_ID:}
-  key-secret: ${RAZORPAY_KEY_SECRET:}
-  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET:}
+  base-url: https://api.razorpay.com
+  key-id: rzp_test_S37LuK1wydJk7o
+  key-secret: dGKnzFM1dsP1tD9uC7hRW0s
+  webhook-secret: dummy_for_now

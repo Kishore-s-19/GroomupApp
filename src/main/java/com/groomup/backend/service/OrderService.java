@@ -6,6 +6,8 @@ import com.groomup.backend.dto.OrderResponse;
 import com.groomup.backend.model.*;
 import com.groomup.backend.repository.CartRepository;
 import com.groomup.backend.repository.OrderRepository;
+import com.groomup.backend.repository.PaymentRepository;
+import com.groomup.backend.repository.ProductRepository;
 import com.groomup.backend.repository.UserRepository;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -26,13 +28,23 @@ public class OrderService {
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
+    private final ProductRepository productRepository;
+    private final PaymentRepository paymentRepository;
     private final UserRepository userRepository;
     private final CartService cartService;
 
-    public OrderService(OrderRepository orderRepository, CartRepository cartRepository,
-                        UserRepository userRepository, CartService cartService) {
+    public OrderService(
+            OrderRepository orderRepository,
+            CartRepository cartRepository,
+            ProductRepository productRepository,
+            PaymentRepository paymentRepository,
+            UserRepository userRepository,
+            CartService cartService
+    ) {
         this.orderRepository = orderRepository;
         this.cartRepository = cartRepository;
+        this.productRepository = productRepository;
+        this.paymentRepository = paymentRepository;
         this.userRepository = userRepository;
         this.cartService = cartService;
     }
@@ -55,14 +67,30 @@ public class OrderService {
         BigDecimal totalPrice = BigDecimal.ZERO;
 
         for (CartItem cartItem : cart.getItems()) {
+            int quantity = cartItem.getQuantity();
+            if (quantity <= 0) {
+                throw new ResponseStatusException(BAD_REQUEST, "Invalid quantity");
+            }
+
+            Product product = cartItem.getProduct();
+            if (product == null) {
+                throw new ResponseStatusException(BAD_REQUEST, "Invalid product");
+            }
+            if (product.getStockQuantity() < quantity) {
+                throw new ResponseStatusException(BAD_REQUEST, "Insufficient stock");
+            }
+
+            product.setStockQuantity(product.getStockQuantity() - quantity);
+            productRepository.save(product);
+
             OrderItem orderItem = new OrderItem(
                     order,
-                    cartItem.getProduct(),
-                    cartItem.getQuantity(),
-                    cartItem.getProduct().getPrice()
+                    product,
+                    quantity,
+                    product.getPrice()
             );
             order.addItem(orderItem);
-            totalPrice = totalPrice.add(cartItem.getProduct().getPrice().multiply(BigDecimal.valueOf(cartItem.getQuantity())));
+            totalPrice = totalPrice.add(product.getPrice().multiply(BigDecimal.valueOf(quantity)));
         }
 
         order.setTotalPrice(totalPrice);
@@ -92,6 +120,51 @@ public class OrderService {
         return toOrderResponse(order);
     }
 
+    @Transactional
+    public OrderResponse cancelMyOrder(Long id) {
+        User user = getCurrentUser();
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Access denied");
+        }
+
+        if (isTerminalOrder(order.getStatus())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Order cannot be cancelled");
+        }
+
+        Payment latestPayment = paymentRepository.findTopByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null);
+        if (latestPayment != null && latestPayment.getStatus() == PaymentStatus.SUCCESS) {
+            throw new ResponseStatusException(BAD_REQUEST, "Order cannot be cancelled");
+        }
+
+        restoreStock(order);
+        order.setStatus("CANCELLED");
+        Order saved = orderRepository.save(order);
+
+        if (latestPayment != null && (latestPayment.getStatus() == PaymentStatus.PENDING || latestPayment.getStatus() == PaymentStatus.INITIATED)) {
+            latestPayment.setStatus(PaymentStatus.CANCELLED);
+            paymentRepository.save(latestPayment);
+        }
+
+        return toOrderResponse(saved);
+    }
+
+    @Transactional
+    public OrderResponse markOrderDelivered(Long id) {
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+
+        if (!"PAID".equals(order.getStatus())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Only PAID orders can be delivered");
+        }
+
+        order.setStatus("DELIVERED");
+        return toOrderResponse(orderRepository.save(order));
+    }
+
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -100,6 +173,32 @@ public class OrderService {
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "User not found"));
+    }
+
+    private boolean isTerminalOrder(String status) {
+        if (status == null) {
+            return false;
+        }
+        return "PAID".equals(status) || "DELIVERED".equals(status) || "CANCELLED".equals(status);
+    }
+
+    private void restoreStock(Order order) {
+        List<OrderItem> items = order.getItems();
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        for (OrderItem item : items) {
+            Product product = item.getProduct();
+            if (product == null) {
+                continue;
+            }
+            int restoreQty = item.getQuantity();
+            if (restoreQty <= 0) {
+                continue;
+            }
+            product.setStockQuantity(product.getStockQuantity() + restoreQty);
+            productRepository.save(product);
+        }
     }
 
     private OrderResponse toOrderResponse(Order order) {

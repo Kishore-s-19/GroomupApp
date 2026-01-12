@@ -7,6 +7,7 @@ public class PaymentRequest {
     @NotNull
     private Long orderId;
 
+    @NotNull
     private String provider;
 
     public Long getOrderId() {
@@ -25,4 +26,3 @@ public class PaymentRequest {
         this.provider = provider;
     }
 }
-

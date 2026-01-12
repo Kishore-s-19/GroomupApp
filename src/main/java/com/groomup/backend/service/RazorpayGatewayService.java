@@ -1,38 +1,43 @@
 package com.groomup.backend.service;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClientResponseException;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @Service
 public class RazorpayGatewayService {
 
-    private final RestTemplate restTemplate;
+    private final HttpClient httpClient;
+    private final String baseUrl;
+    private final String keyId;
+    private final String keySecret;
 
-    @Value("${razorpay.base-url:https://api.razorpay.com}")
-    private String baseUrl;
-
-    @Value("${razorpay.key-id:}")
-    private String keyId;
-
-    @Value("${razorpay.key-secret:}")
-    private String keySecret;
-
-    public RazorpayGatewayService(RestTemplate restTemplate) {
-        this.restTemplate = restTemplate;
+    public RazorpayGatewayService(
+            @Value("${razorpay.base-url}") String baseUrl,
+            @Value("${razorpay.key-id}") String keyId,
+            @Value("${razorpay.key-secret}") String keySecret
+    ) {
+        this.baseUrl = baseUrl;
+        this.keyId = keyId;
+        this.keySecret = keySecret;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
     public String getKeyId() {
@@ -40,64 +45,100 @@ public class RazorpayGatewayService {
     }
 
     public String createOrder(BigDecimal amount, String currency, String receipt) {
-        ensureConfigured();
+        long amountSubunits = amount
+                .movePointRight(2)
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
 
-        long amountSubunits = toSubunits(amount);
-        String normalizedCurrency = currency == null ? "INR" : currency.trim().toUpperCase(Locale.ROOT);
+        String body = "{\"amount\":" + amountSubunits
+                + ",\"currency\":\"" + escapeJson(currency)
+                + "\",\"receipt\":\"" + escapeJson(receipt)
+                + "\",\"payment_capture\":1}";
 
-        String url = baseUrl + "/v1/orders";
+        String authHeader = buildBasicAuthHeader(keyId, keySecret);
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("amount", amountSubunits);
-        body.put("currency", normalizedCurrency);
-        body.put("receipt", receipt);
-        body.put("payment_capture", 1);
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(normalizeBaseUrl(baseUrl) + "/v1/orders"))
+                .timeout(Duration.ofSeconds(20))
+                .header("Authorization", authHeader)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build();
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Authorization", "Basic " + basicAuthToken(keyId, keySecret));
-
+        HttpResponse<String> response;
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    url,
-                    HttpMethod.POST,
-                    new HttpEntity<>(body, headers),
-                    Map.class
-            );
-            Map<?, ?> payload = response.getBody();
-            if (payload == null || payload.get("id") == null) {
-                throw new ResponseStatusException(BAD_GATEWAY, "Invalid Razorpay response");
+            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new ResponseStatusException(BAD_GATEWAY, "Razorpay order creation failed: Gateway unreachable");
+        }
+
+        if (response.statusCode() == HttpStatus.OK.value() || response.statusCode() == HttpStatus.CREATED.value()) {
+            String id = extractJsonString(response.body(), "id");
+            if (id == null || id.isBlank()) {
+                throw new ResponseStatusException(BAD_GATEWAY, "Razorpay order creation failed: Invalid gateway response");
             }
-            return payload.get("id").toString();
-        } catch (RestClientResponseException ex) {
-            throw new ResponseStatusException(
-                    BAD_GATEWAY,
-                    "Razorpay order creation failed: " + ex.getStatusText()
-            );
+            return id;
         }
+
+        String description = extractGatewayErrorDescription(response.body());
+        if (description == null || description.isBlank()) {
+            description = "HTTP " + response.statusCode();
+        }
+        throw new ResponseStatusException(BAD_GATEWAY, "Razorpay order creation failed: " + description);
     }
 
-    private void ensureConfigured() {
-        if (keyId == null || keyId.isBlank() || keySecret == null || keySecret.isBlank()) {
-            throw new ResponseStatusException(BAD_REQUEST, "Razorpay keys are not configured");
-        }
+    private static String buildBasicAuthHeader(String keyId, String keySecret) {
+        String raw = (keyId == null ? "" : keyId) + ":" + (keySecret == null ? "" : keySecret);
+        String encoded = Base64.getEncoder().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
+        return "Basic " + encoded;
     }
 
-    private long toSubunits(BigDecimal amount) {
-        if (amount == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "Amount is required");
+    private String extractGatewayErrorDescription(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return null;
         }
-        try {
-            return amount.multiply(new BigDecimal("100")).longValueExact();
-        } catch (ArithmeticException ex) {
-            throw new ResponseStatusException(BAD_REQUEST, "Amount must have max 2 decimals");
+        String description = extractJsonString(responseBody, "description");
+        if (description != null && !description.isBlank()) {
+            return description;
         }
+        String code = extractJsonString(responseBody, "code");
+        if (code != null && !code.isBlank()) {
+            return code;
+        }
+        return null;
     }
 
-    private String basicAuthToken(String username, String password) {
-        String raw = username + ":" + password;
-        byte[] encoded = Base64.getEncoder().encode(raw.getBytes(StandardCharsets.UTF_8));
-        return new String(encoded, StandardCharsets.UTF_8);
+    private static String normalizeBaseUrl(String baseUrl) {
+        if (baseUrl == null) {
+            return "";
+        }
+        if (baseUrl.endsWith("/")) {
+            return baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl;
+    }
+
+    private static String extractJsonString(String json, String key) {
+        if (json == null || json.isBlank() || key == null || key.isBlank()) {
+            return null;
+        }
+        Pattern p = Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:\\s*\"([^\"]*)\"");
+        Matcher m = p.matcher(json);
+        if (m.find()) {
+            return m.group(1);
+        }
+        return null;
+    }
+
+    private static String escapeJson(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
     }
 }
-

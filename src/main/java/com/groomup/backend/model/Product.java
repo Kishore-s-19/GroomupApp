@@ -6,7 +6,13 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "products")
+@Table(
+        name = "products",
+        indexes = {
+                @Index(name = "idx_products_category", columnList = "category"),
+                @Index(name = "idx_products_created_at", columnList = "createdAt")
+        }
+)
 public class Product {
 
     @Id
@@ -16,14 +22,16 @@ public class Product {
     @Column(nullable = false)
     private String name;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 2048)
     private String description;
 
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
+    @Column(length = 2048)
     private String imageUrl;
 
+    @Column(length = 128)
     private String category;
 
     @Column(nullable = false)

@@ -25,8 +25,8 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> items = new ArrayList<>();
 
-    @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal totalAmount = BigDecimal.ZERO;
+    @Column(name = "total_price", nullable = false, precision = 19, scale = 2)
+    private BigDecimal totalPrice = BigDecimal.ZERO;
 
     @Column(nullable = false)
     private String status;
@@ -78,15 +78,11 @@ public class Order {
     }
 
     public BigDecimal getTotalPrice() {
-        return totalAmount;
+        return totalPrice;
     }
 
     public void setTotalPrice(BigDecimal totalPrice) {
-        this.totalAmount = totalPrice;
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
+        this.totalPrice = totalPrice;
     }
 
     public String getStatus() {

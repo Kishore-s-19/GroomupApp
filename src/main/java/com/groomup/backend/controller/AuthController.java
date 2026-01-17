@@ -4,6 +4,7 @@ import com.groomup.backend.dto.AuthenticationRequest;
 import com.groomup.backend.dto.AuthenticationResponse;
 import com.groomup.backend.dto.RegisterRequest;
 import com.groomup.backend.service.AuthenticationService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +21,7 @@ public class AuthController {
     // ✅ REGISTER
     @PostMapping("/register")
     public ResponseEntity<AuthenticationResponse> register(
-            @RequestBody RegisterRequest request
+            @RequestBody @Valid RegisterRequest request
     ) {
         return ResponseEntity.ok(authenticationService.register(request));
     }
@@ -31,5 +32,10 @@ public class AuthController {
             @RequestBody AuthenticationRequest request
     ) {
         return ResponseEntity.ok(authenticationService.login(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.ok().build();
     }
 }

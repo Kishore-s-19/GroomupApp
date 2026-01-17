@@ -3,6 +3,12 @@ import { authService } from '../services/api';
 
 const AuthContext = createContext();
 
+const isValidJwt = (token) => {
+  if (typeof token !== 'string') return false;
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every(Boolean);
+};
+
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
@@ -21,7 +27,12 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem('groomupUser');
     if (storedUser) {
       try {
-        setUser(JSON.parse(storedUser));
+        const parsed = JSON.parse(storedUser);
+        if (isValidJwt(parsed?.token)) {
+          setUser(parsed);
+        } else {
+          localStorage.removeItem('groomupUser');
+        }
       } catch {
         localStorage.removeItem('groomupUser');
       }
@@ -33,7 +44,11 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await authService.login(credentials);
-      const userData = { ...response.user, token: response.token };
+      const token = response?.token;
+      if (!isValidJwt(token)) {
+        throw new Error('Invalid login response');
+      }
+      const userData = { token, email: credentials?.email };
       localStorage.setItem('groomupUser', JSON.stringify(userData));
       setUser(userData);
       return { success: true, data: response };
@@ -47,9 +62,13 @@ export const AuthProvider = ({ children }) => {
     try {
       setError(null);
       const response = await authService.register(userData);
-      const userWithToken = { ...response.user, token: response.token };
-      localStorage.setItem('groomupUser', JSON.stringify(userWithToken));
-      setUser(userWithToken);
+      const token = response?.token;
+      if (!isValidJwt(token)) {
+        throw new Error('Invalid registration response');
+      }
+      const storedUserData = { token, email: userData?.email, name: userData?.name };
+      localStorage.setItem('groomupUser', JSON.stringify(storedUserData));
+      setUser(storedUserData);
       return { success: true, data: response };
     } catch (err) {
       setError(err.message || 'Registration failed');
@@ -84,7 +103,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-    isAuthenticated: !!user,
+    isAuthenticated: isValidJwt(user?.token),
   };
 
   return (

@@ -46,6 +46,7 @@ const App = () => {
               {/* 🌍 MAIN ROUTES (WITH HEADER / FOOTER) */}
               <Route element={<MainLayout />}>
                 <Route path="/" element={<Home />} />
+                  <Route path="/category/:category" element={<Home />} />
                 <Route path="/cart" element={<ShoppingBag />} />
                 <Route path="/track-order" element={<TrackOrder />} />
                 <Route path="/store-locator" element={<StoreLocator />} />

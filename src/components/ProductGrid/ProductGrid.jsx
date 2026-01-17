@@ -16,33 +16,15 @@ const CATEGORY_LABELS = {
 const ProductGrid = ({
   selectedCategory,
   onCategoryChange,
-  categoryChangeSource,
 }) => {
   const [category, setCategory] = useState(selectedCategory ?? "all");
+  const [allProducts, setAllProducts] = useState([]);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
 
-  const showLoadingTransition =
-    loading &&
-    (products.length === 0 ||
-      (!isMobile && categoryChangeSource !== "hero"));
-
-  useEffect(() => {
-    const media = window.matchMedia("(max-width: 768px)");
-    const update = () => setIsMobile(media.matches);
-    update();
-
-    if (typeof media.addEventListener === "function") {
-      media.addEventListener("change", update);
-      return () => media.removeEventListener("change", update);
-    }
-
-    media.addListener(update);
-    return () => media.removeListener(update);
-  }, []);
+  const showLoadingTransition = loading && allProducts.length === 0;
 
   useEffect(() => {
     if (!selectedCategory) return;
@@ -54,9 +36,8 @@ const ProductGrid = ({
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const params = category === 'all' ? {} : { category };
-        const data = await productService.getAllProducts(params);
-        setProducts(data);
+        const data = await productService.getAllProducts();
+        setAllProducts(Array.isArray(data) ? data : []);
         setError(null);
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -67,7 +48,44 @@ const ProductGrid = ({
     };
 
     fetchProducts();
-  }, [category]);
+  }, []);
+
+  useEffect(() => {
+    const normalize = (s) =>
+      String(s ?? "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
+
+    const detectCategory = (raw) => {
+      const pc = normalize(raw);
+      if (!pc) return null;
+      if (pc.includes("tshirt") || pc.includes("tee")) return "tshirts";
+      if (pc.includes("shirt")) return "shirts";
+      if (
+        pc.includes("bottom") ||
+        pc.includes("pant") ||
+        pc.includes("trouser") ||
+        pc.includes("jean")
+      ) {
+        return "bottoms";
+      }
+      if (pc.includes("serum")) return "serum";
+      if (pc.includes("accessor")) return "accessories";
+      return pc;
+    };
+
+    if (category === "all") {
+      setProducts(allProducts);
+      return;
+    }
+
+    const next = allProducts.filter((p) => {
+      const detected = detectCategory(p?.category);
+      if (!detected) return false;
+      return detected === category;
+    });
+    setProducts(next);
+  }, [category, allProducts]);
 
   const handleCategoryChange = (nextCategory) => {
     setCategory(nextCategory);
@@ -76,8 +94,16 @@ const ProductGrid = ({
     }
   };
 
-  const goToProductDetail = (product) => {
-    navigate(`/product/${product.id}`);
+  const goToProductDetail = (product, index) => {
+    const rawId = product?.id;
+    const idNum = Number(rawId);
+    const routeId =
+      Number.isFinite(idNum) && idNum >= 31
+        ? idNum - 30
+        : Number.isFinite(idNum)
+          ? idNum
+          : index + 1;
+    navigate(`/product/${routeId}`);
   };
 
   if (error) {
@@ -112,7 +138,7 @@ const ProductGrid = ({
               category === key ? "active" : ""
             }`}
             onClick={() => handleCategoryChange(key)}
-            disabled={loading}
+            disabled={loading && allProducts.length === 0}
           >
             {key === "all"
               ? "All"
@@ -128,11 +154,11 @@ const ProductGrid = ({
       ) : (
         <div className="product-grid">
           {products.length > 0 ? (
-            products.map((product) => (
+            products.map((product, index) => (
               <div
                 className="product-card"
-                key={product.id}
-                onClick={() => goToProductDetail(product)}
+                key={product.id ?? `${product.name ?? "product"}-${index}`}
+                onClick={() => goToProductDetail(product, index)}
               >
                 <div className="product-image">
                   <img

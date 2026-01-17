@@ -30,7 +30,12 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const data = await productService.getProductById(productId);
+        const rawId = productId;
+        const idNum = Number(rawId);
+        const apiId =
+          Number.isFinite(idNum) && idNum >= 1 && idNum < 31 ? idNum + 30 : rawId;
+
+        const data = await productService.getProductById(apiId);
         setProduct(data);
         
         // Initialize size selection
@@ -104,13 +109,27 @@ const ProductDetail = () => {
     );
   }
 
+  const categoryName = product.category ? (product.category.charAt(0).toUpperCase() + product.category.slice(1)) : "Product";
+  const mainImage = product.images && product.images.length > 0 ? product.images[selectedImage] : "https://via.placeholder.com/400";
+  const rating = typeof product.rating === "number" ? product.rating : 0;
+  const reviews = typeof product.reviews === "number" ? product.reviews : 0;
+  const fit = product.fit && typeof product.fit === "object"
+    ? product.fit
+    : { trueToSize: 50, length: 50, width: 50 };
+  const popupImage = product.images && product.images.length > 0 ? product.images[0] : mainImage;
+  const popupColorName = product.colors && product.colors[selectedColor]?.name
+    ? product.colors[selectedColor].name
+    : product.colors && product.colors[0]?.name
+      ? product.colors[0].name
+      : "Default";
+
   return (
     <div className="product-detail-page">
       <div className="breadcrumb">
         <a onClick={() => navigate("/")}>Home</a> &gt; 
         <a onClick={() => navigate("/collection")}>Collection</a> &gt; 
         <a onClick={() => navigate(`/category/${product.category}`)}>
-          {product.category.charAt(0).toUpperCase() + product.category.slice(1)}
+          {categoryName}
         </a> &gt; 
         <span>{product.name}</span>
       </div>
@@ -118,10 +137,10 @@ const ProductDetail = () => {
       <div className="product-container">
         <div className="product-gallery">
           <div className="main-image">
-            <img src={product.images[selectedImage]} alt={product.name} />
+            <img src={mainImage} alt={product.name} />
           </div>
           <div className="thumbnail-container">
-            {product.images.map((image, index) => (
+            {product.images && product.images.map((image, index) => (
               <div 
                 key={index}
                 className={`thumbnail ${selectedImage === index ? 'active' : ''}`}
@@ -204,41 +223,41 @@ const ProductDetail = () => {
                 {[...Array(5)].map((_, i) => (
                   <i 
                     key={i}
-                    className={`fas fa-star${i < Math.floor(product.rating) ? '' : i < product.rating ? '-half-alt' : ''}`}
+                    className={`fas fa-star${i < Math.floor(rating) ? '' : i < rating ? '-half-alt' : ''}`}
                   ></i>
                 ))}
               </div>
-              <span className="review-count">REVIEWS [{product.reviews}]</span>
+              <span className="review-count">REVIEWS [{reviews}]</span>
             </div>
-            <div className="rating-text">{"★".repeat(Math.floor(product.rating))}{product.rating % 1 >= 0.5 ? "½" : ""} {product.rating}</div>
+            <div className="rating-text">{"★".repeat(Math.floor(rating))}{rating % 1 >= 0.5 ? "½" : ""} {rating}</div>
           </div>
 
           <div className="size-fit">
             <div className="fit-item">
               <div className="fit-label">TRUE TO SIZE</div>
               <div className="fit-bar">
-                <div className="fit-indicator" style={{ left: `${product.fit.trueToSize}%` }}></div>
+                <div className="fit-indicator" style={{ left: `${fit.trueToSize}%` }}></div>
               </div>
               <div className="fit-value">
-                {product.fit.trueToSize < 40 ? "Small" : product.fit.trueToSize < 70 ? "Spot on" : "Large"}
+                {fit.trueToSize < 40 ? "Small" : fit.trueToSize < 70 ? "Spot on" : "Large"}
               </div>
             </div>
             <div className="fit-item">
               <div className="fit-label">LENGTH</div>
               <div className="fit-bar">
-                <div className="fit-indicator" style={{ left: `${product.fit.length}%` }}></div>
+                <div className="fit-indicator" style={{ left: `${fit.length}%` }}></div>
               </div>
               <div className="fit-value">
-                {product.fit.length < 40 ? "Short" : product.fit.length < 70 ? "Spot on" : "Long"}
+                {fit.length < 40 ? "Short" : fit.length < 70 ? "Spot on" : "Long"}
               </div>
             </div>
             <div className="fit-item">
               <div className="fit-label">WIDTH</div>
               <div className="fit-bar">
-                <div className="fit-indicator" style={{ left: `${product.fit.width}%` }}></div>
+                <div className="fit-indicator" style={{ left: `${fit.width}%` }}></div>
               </div>
               <div className="fit-value">
-                {product.fit.width < 40 ? "Narrow" : product.fit.width < 70 ? "Spot on" : "Wide"}
+                {fit.width < 40 ? "Narrow" : fit.width < 70 ? "Spot on" : "Wide"}
               </div>
             </div>
           </div>
@@ -295,12 +314,12 @@ const ProductDetail = () => {
             <div className="popup-body">
               <div className="popup-item">
                 <div className="popup-item-image">
-                  <img src={product.images[0]} alt={product.name} />
+                  <img src={popupImage} alt={product.name} />
                 </div>
                 <div className="popup-item-details">
                   <div className="popup-item-name">{product.name}</div>
                   <div className="popup-item-attributes">
-                    <div>Colour: <span>{product.colors[selectedColor].name}</span></div>
+                    <div>Colour: <span>{popupColorName}</span></div>
                     <div>Size: <span>{selectedSize}</span></div>
                     <div>Quantity: 1</div>
                   </div>

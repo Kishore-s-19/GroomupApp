@@ -57,15 +57,15 @@ const ProductDetailHeader = ({ variant = "product" }) => {
   // Perform search
   const performSearch = async (query) => {
     const requestId = ++searchRequestIdRef.current;
-    if (!query.trim()) {
+    const q = String(query ?? "").trim();
+    if (!q) {
       setSearchResults([]);
+      setIsSearching(false);
       return;
     }
 
-    setIsSearching(true);
-    
     try {
-      const results = await productService.searchProducts(query);
+      const results = await productService.searchProducts(q);
       if (requestId !== searchRequestIdRef.current) return;
       setSearchResults(results.slice(0, 10)); // Limit to 10 results
     } catch (err) {
@@ -82,6 +82,17 @@ const ProductDetailHeader = ({ variant = "product" }) => {
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
+    const q = String(query ?? "").trim();
+
+    if (!q) {
+      searchRequestIdRef.current += 1;
+      setSearchResults([]);
+      setIsSearching(false);
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+      return;
+    }
+
+    setIsSearching(true);
     if (searchDebounceRef.current) {
       clearTimeout(searchDebounceRef.current);
     }
@@ -93,19 +104,24 @@ const ProductDetailHeader = ({ variant = "product" }) => {
   // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      // Navigate to search results page or first result
-      if (searchResults.length > 0) {
-        navigate(`/product/${searchResults[0].id}`);
-        setSearchOpen(false);
-        setSearchQuery("");
-      }
+    const q = searchQuery.trim();
+    if (!q) {
+      if (inputRef.current) inputRef.current.focus();
+      return;
     }
+
+    navigate(`/search?q=${encodeURIComponent(q)}`);
+    setSearchOpen(false);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
   // Handle clicking on a search result
   const handleResultClick = (productId) => {
-    navigate(`/product/${productId}`);
+    const idNum = Number(productId);
+    const routeId =
+      Number.isFinite(idNum) && idNum >= 31 ? idNum - 30 : productId;
+    navigate(`/product/${routeId}`);
     setSearchOpen(false);
     setSearchQuery("");
     setSearchResults([]);
@@ -113,8 +129,11 @@ const ProductDetailHeader = ({ variant = "product" }) => {
 
   // Clear search
   const clearSearch = () => {
+    searchRequestIdRef.current += 1;
     setSearchQuery("");
     setSearchResults([]);
+    setIsSearching(false);
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     if (inputRef.current) inputRef.current.focus();
   };
 
@@ -162,41 +181,49 @@ const ProductDetailHeader = ({ variant = "product" }) => {
             {/* NAV ACTIONS */}
             <div className="nav-actions">
               {/* SEARCH */}
-              <div className="search-container" ref={searchRef}>
-                <FaSearch
-                  className="icon"
-                  onClick={() => setSearchOpen((prev) => !prev)}
-                />
-
-                <div
-                  className={`search-bar ${
-                    searchOpen ? "active" : ""
-                  }`}
+              <div
+                className={`nav-search ${searchOpen ? "open" : ""}`}
+                ref={searchRef}
+              >
+                <form
+                  onSubmit={handleSearchSubmit}
+                  className={`nav-search-form ${searchOpen ? "open" : ""}`}
                 >
-                  <form onSubmit={handleSearchSubmit} className="search-form">
-                    <div className="search-input-wrapper">
-                      <input
-                        ref={inputRef}
-                        type="text"
-                        placeholder="Search products, brands, categories..."
-                        className="search-input"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      {searchQuery && (
-                        <FaTimes
-                          className="clear-search"
-                          onClick={clearSearch}
-                        />
-                      )}
-                    </div>
-                    <button type="submit" className="search-submit">
-                      <FaSearch />
-                    </button>
-                  </form>
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    placeholder="Search"
+                    className="nav-search-input"
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => setSearchOpen(true)}
+                  />
 
-                  {/* Search Results Dropdown */}
-                  {searchOpen && (
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="nav-search-clear"
+                      onClick={clearSearch}
+                      aria-label="Clear search"
+                    >
+                      <FaTimes />
+                    </button>
+                  )}
+
+                  <button
+                    type={searchOpen ? "submit" : "button"}
+                    className="nav-search-button"
+                    onClick={() => {
+                      if (!searchOpen) setSearchOpen(true);
+                    }}
+                    aria-label="Search"
+                  >
+                    <FaSearch />
+                  </button>
+                </form>
+
+                {searchOpen && searchQuery.trim() && (
+                  <div className="nav-search-dropdown">
                     <div className="search-results">
                       {isSearching ? (
                         <div className="search-loading">
@@ -218,28 +245,39 @@ const ProductDetailHeader = ({ variant = "product" }) => {
                             >
                               <div className="result-image">
                                 <img
-                                  src={product.images[0]}
+                                  src={product.images && product.images[0]}
                                   alt={product.name}
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src =
+                                      "https://via.placeholder.com/120x160?text=Product";
+                                  }}
                                 />
                               </div>
                               <div className="result-details">
-                                <div className="result-brand">
-                                  {product.brand}
-                                </div>
                                 <div className="result-name">
                                   {product.name}
                                 </div>
-                                <div className="result-price">
-                                  ₹{product.price}
-                                </div>
+                                {typeof product.price === "number" && (
+                                  <div className="result-price">
+                                    Rs. {product.price.toLocaleString()}.00
+                                  </div>
+                                )}
                               </div>
                             </div>
                           ))}
                           <div className="view-all-results">
-                            <button onClick={() => {
-                              navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
-                              setSearchOpen(false);
-                            }}>
+                            <button
+                              onClick={() => {
+                                navigate(
+                                  `/search?q=${encodeURIComponent(searchQuery)}`
+                                );
+                                setSearchOpen(false);
+                                setSearchQuery("");
+                                setSearchResults([]);
+                              }}
+                            >
                               View all results for "{searchQuery}"
                             </button>
                           </div>
@@ -250,8 +288,8 @@ const ProductDetailHeader = ({ variant = "product" }) => {
                         </div>
                       ) : null}
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {/* USER */}

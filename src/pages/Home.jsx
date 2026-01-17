@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 
 import HeroSlider from "../components/HeroSlider/HeroSlider";
 import ProductGrid from "../components/ProductGrid/ProductGrid";
@@ -8,8 +9,22 @@ import NewsletterPopup from "../components/NewsletterPopup/NewsletterPopup"; // 
 import "../assets/styles/homepage.css";
 
 const Home = () => {
+  const { category: categoryParam } = useParams();
   const [showPopup, setShowPopup] = useState(false);
   const [subscriberEmail, setSubscriberEmail] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(
+    categoryParam ?? "all"
+  );
+  const [categoryChangeSource, setCategoryChangeSource] = useState(null);
+
+  useEffect(() => {
+    setSelectedCategory(categoryParam ?? "all");
+  }, [categoryParam]);
+
+  const handleCategoryChange = (nextCategory, source = "filters") => {
+    setCategoryChangeSource(source);
+    setSelectedCategory(nextCategory || "all");
+  };
 
   const handleNewsletterSubmit = (e) => {
     e.preventDefault();
@@ -31,10 +46,14 @@ const Home = () => {
       
 
       {/* HERO SLIDER */}
-      <HeroSlider />
+      <HeroSlider onCategoryChange={(c) => handleCategoryChange(c, "hero")} />
 
       {/* PRODUCTS / COLLECTIONS */}
-      <ProductGrid />
+      <ProductGrid
+        selectedCategory={selectedCategory}
+        onCategoryChange={(c) => handleCategoryChange(c, "filters")}
+        categoryChangeSource={categoryChangeSource}
+      />
 
       {/* SERVICES SECTION */}
       <section className="services">

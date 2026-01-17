@@ -68,6 +68,16 @@ const Register = () => {
           />
 
           <input
+            type="tel"
+            name="phone"
+            placeholder="Phone Number"
+            required
+            value={form.phone}
+            onChange={handleChange}
+            disabled={loading}
+          />
+
+          <input
             type="password"
             name="password"
             placeholder="Password"

@@ -36,7 +36,10 @@ const SearchResults = () => {
   };
 
   const handleProductClick = (productId) => {
-    navigate(`/product/${productId}`);
+    const idNum = Number(productId);
+    const routeId =
+      Number.isFinite(idNum) && idNum >= 31 ? idNum - 30 : productId;
+    navigate(`/product/${routeId}`);
   };
 
   return (

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
+import { orderService, paymentService } from '../services/api';
 import { FaLock, FaShieldAlt, FaCreditCard, FaMoneyBillWave, FaGooglePay } from 'react-icons/fa';
 import '../assets/styles/checkout.css';
 
@@ -24,10 +25,31 @@ const Checkout = () => {
   const [deliveryMethod, setDeliveryMethod] = useState('standard');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+
+  // Load Razorpay script
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.async = true;
+    script.onload = () => setRazorpayLoaded(true);
+    script.onerror = () => {
+      console.error('Failed to load Razorpay script');
+      alert('Payment gateway could not be loaded. Please refresh the page.');
+    };
+    document.body.appendChild(script);
+
+    return () => {
+      const existingScript = document.querySelector('script[src="https://checkout.razorpay.com/v1/checkout.js"]');
+      if (existingScript) {
+        document.body.removeChild(existingScript);
+      }
+    };
+  }, []);
 
   // Calculate totals
   const subtotal = cart.reduce((sum, item) => sum + (Number(item.price) * item.quantity), 0);
-  const deliveryCost = subtotal >= 999 ? 0 : (deliveryMethod === 'express' ? 250 : 148);
+  const deliveryCost = deliveryMethod === 'express' ? 250 : 0; // Standard delivery is free
   const total = subtotal + deliveryCost;
 
   const handleInputChange = (e) => {
@@ -38,17 +60,172 @@ const Checkout = () => {
     }));
   };
 
+  const handleRazorpayPayment = async (orderId, paymentResponse) => {
+    if (!window.Razorpay || !razorpayLoaded) {
+      throw new Error('Razorpay SDK not loaded');
+    }
+
+    // Convert amount to number and then to paise (multiply by 100)
+    const amountInPaise = Math.round(Number(paymentResponse.amount || 0) * 100);
+
+    const options = {
+      key: paymentResponse.gatewayKeyId,
+      amount: amountInPaise, // Amount in paise
+      currency: paymentResponse.currency,
+      name: 'GROOMUP',
+      description: `Order #${orderId}`,
+      order_id: paymentResponse.gatewayOrderId,
+      handler: async function(response) {
+        // IMPORTANT: In test mode, Razorpay handler may be called prematurely
+        // For UPI payments, we verify with backend before showing success
+        console.log('Razorpay payment handler called:', response);
+        
+        // Validate response has required fields
+        if (!response || !response.razorpay_payment_id || !response.razorpay_order_id) {
+          console.error('Invalid Razorpay response:', response);
+          navigate(`/order-failure?orderId=${orderId}&reason=invalid_payment_response`);
+          return;
+        }
+
+        // For UPI, verify payment status with backend before redirecting
+        // This ensures actual payment completion, not just handler callback
+        if (paymentMethod === 'upi') {
+          try {
+            // Show verifying state
+            const verifyMessage = document.createElement('div');
+            verifyMessage.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:10000;text-align:center;';
+            verifyMessage.innerHTML = '<h3>Verifying Payment...</h3><p>Please wait while we confirm your payment.</p>';
+            document.body.appendChild(verifyMessage);
+
+            // Wait and verify payment status multiple times
+            let verified = false;
+            let attempts = 0;
+            const maxAttempts = 8; // Check for up to 16 seconds (8 attempts × 2 seconds)
+            
+            while (!verified && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000));
+              
+              try {
+                const latestPayment = await paymentService.getLatestPayment(orderId);
+                console.log('Payment status check:', latestPayment);
+                
+                if (latestPayment && latestPayment.status === 'SUCCESS') {
+                  verified = true;
+                  document.body.removeChild(verifyMessage);
+                  clearCart();
+                  navigate(`/order-success?orderId=${orderId}&paymentId=${response.razorpay_payment_id}`);
+                  return;
+                }
+              } catch (err) {
+                console.log(`Payment verification attempt ${attempts + 1} failed:`, err.message);
+              }
+              
+              attempts++;
+            }
+            
+            document.body.removeChild(verifyMessage);
+            
+            // If payment not verified, show error
+            if (!verified) {
+              alert('Payment verification failed. Please check your order status or contact support. If payment was successful, your order will be processed.');
+              navigate(`/order-failure?orderId=${orderId}&reason=payment_verification_failed`);
+              return;
+            }
+          } catch (error) {
+            console.error('Payment verification error:', error);
+            // Remove any loading messages
+            const verifyMsg = document.querySelector('div[style*="Verifying Payment"]');
+            if (verifyMsg) document.body.removeChild(verifyMsg);
+            
+            alert('Could not verify payment status. Please check your order status. If payment was successful, your order will be processed.');
+            navigate(`/order-failure?orderId=${orderId}&reason=verification_error`);
+          }
+        } else {
+          // For card payments, redirect immediately (more reliable)
+          // But still verify in background
+          clearCart();
+          navigate(`/order-success?orderId=${orderId}&paymentId=${response.razorpay_payment_id}`);
+        }
+      },
+      prefill: {
+        name: `${formData.firstName} ${formData.lastName}`.trim() || 'Customer',
+        email: formData.email || '',
+        contact: formData.phone || ''
+      },
+      theme: {
+        color: '#8B1538'
+      },
+      modal: {
+        ondismiss: function() {
+          // User closed the modal - redirect to failure page
+          navigate(`/order-failure?orderId=${orderId}&reason=payment_cancelled`);
+        }
+      }
+    };
+
+    // For UPI, add UPI-specific options
+    if (paymentMethod === 'upi') {
+      options.method = {
+        upi: true
+      };
+    }
+
+    const razorpay = new window.Razorpay(options);
+    razorpay.on('payment.failed', function(response) {
+      navigate(`/order-failure?orderId=${orderId}&reason=${response.error.description || 'payment_failed'}`);
+    });
+    
+    razorpay.open();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!isAuthenticated) {
+      alert('Please sign in to proceed with checkout.');
+      navigate('/login');
+      return;
+    }
+
+    if (cart.length === 0) {
+      alert('Your cart is empty.');
+      return;
+    }
+
     setIsProcessing(true);
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Build shipping address string
+      const shippingAddress = `${formData.firstName} ${formData.lastName}\n${formData.address}\n${formData.city}, ${formData.state} ${formData.zipCode}\nPhone: ${formData.phone}`;
+
+      // Step 1: Create order
+      const orderResponse = await orderService.createOrder(shippingAddress);
+      const orderId = orderResponse.id;
+
+      // Step 2: Handle payment based on method
+      if (paymentMethod === 'cod') {
+        // For COD, redirect to success page directly
+        clearCart();
+        navigate(`/order-success?orderId=${orderId}&paymentMethod=COD`);
+      } else if (paymentMethod === 'card' || paymentMethod === 'upi') {
+        // For Razorpay (card/UPI), create payment and open Razorpay checkout
+        if (!razorpayLoaded) {
+          throw new Error('Payment gateway is still loading. Please wait a moment and try again.');
+        }
+
+        const paymentResponse = await paymentService.createPayment(orderId, 'RAZORPAY');
+        await handleRazorpayPayment(orderId, paymentResponse);
+      } else {
+        throw new Error('Invalid payment method');
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      const errorMessage = error.message || 'Failed to process order. Please try again.';
+      alert(errorMessage);
+      navigate(`/order-failure?reason=${encodeURIComponent(errorMessage)}`);
+    } finally {
       setIsProcessing(false);
-      alert(`Order placed successfully! Order ID: #${Math.floor(Math.random() * 100000)}`);
-      clearCart();
-      navigate('/'); // Or navigate to an order confirmation page
-    }, 2000);
+    }
   };
 
   if (cart.length === 0) {
@@ -180,7 +357,7 @@ const Checkout = () => {
                       <span className="option-name">Standard Delivery</span>
                       <span className="option-desc">3-5 business days</span>
                     </div>
-                    <span className="option-price">{subtotal >= 999 ? 'FREE' : 'Rs. 148.00'}</span>
+                    <span className="option-price">FREE</span>
                   </div>
                 </div>
                 
@@ -218,6 +395,19 @@ const Checkout = () => {
                 </div>
                 
                 <div 
+                  className={`delivery-option ${paymentMethod === 'upi' ? 'selected' : ''}`}
+                  onClick={() => setPaymentMethod('upi')}
+                >
+                  <div className="radio-circle"></div>
+                  <div className="option-details">
+                    <div style={{display: 'flex', alignItems: 'center', gap: '10px'}}>
+                      <FaGooglePay />
+                      <span className="option-name">UPI</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div 
                   className={`delivery-option ${paymentMethod === 'cod' ? 'selected' : ''}`}
                   onClick={() => setPaymentMethod('cod')}
                 >
@@ -231,38 +421,17 @@ const Checkout = () => {
                 </div>
               </div>
 
-              {paymentMethod === 'card' && (
-                <div className="card-details" style={{marginTop: '20px', padding: '20px', background: '#f8f9fa', borderRadius: '5px'}}>
-                   <div className="form-group full-width">
-                      <label className="form-label">Card Number</label>
-                      <input type="text" className="form-input" placeholder="0000 0000 0000 0000" />
-                   </div>
-                   <div className="form-grid">
-                      <div className="form-group">
-                        <label className="form-label">Expiry Date</label>
-                        <input type="text" className="form-input" placeholder="MM/YY" />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">CVV</label>
-                        <input type="text" className="form-input" placeholder="123" />
-                      </div>
-                   </div>
-                   <div className="form-group full-width">
-                      <label className="form-label">Cardholder Name</label>
-                      <input type="text" className="form-input" placeholder="Name on card" />
-                   </div>
-                </div>
-              )}
-
-              {paymentMethod === 'upi' && (
-                <div className="upi-details" style={{marginTop: '20px', padding: '20px', background: '#f8f9fa', borderRadius: '5px'}}>
-                   <div className="form-group full-width">
-                      <label className="form-label">UPI ID / VPA</label>
-                      <input type="text" className="form-input" placeholder="username@oksbi" />
-                      <p style={{fontSize: '12px', color: '#666', marginTop: '5px'}}>
-                        Enter your UPI ID (e.g. mobile_number@upi). We will send a collect request to your UPI app.
-                      </p>
-                   </div>
+              {(paymentMethod === 'card' || paymentMethod === 'upi') && (
+                <div className="payment-info" style={{marginTop: '20px', padding: '20px', background: '#f8f9fa', borderRadius: '5px', textAlign: 'center'}}>
+                  <p style={{color: '#666', fontSize: '14px'}}>
+                    {paymentMethod === 'card' 
+                      ? 'You will be redirected to Razorpay secure payment gateway to complete your payment.' 
+                      : 'You will be redirected to Razorpay UPI payment gateway to complete your payment.'}
+                  </p>
+                  <div style={{marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px'}}>
+                    <FaShieldAlt style={{color: '#28a745'}} />
+                    <span style={{fontSize: '12px', color: '#28a745'}}>Secure Payment Gateway</span>
+                  </div>
                 </div>
               )}
             </div>
@@ -309,7 +478,7 @@ const Checkout = () => {
               type="submit" 
               form="checkout-form"
               className="place-order-btn"
-              disabled={isProcessing}
+              disabled={isProcessing || (paymentMethod !== 'cod' && !razorpayLoaded)}
             >
               {isProcessing ? 'Processing...' : 'Place Order'}
             </button>

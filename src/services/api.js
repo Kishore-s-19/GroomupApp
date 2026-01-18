@@ -212,4 +212,30 @@ export const cartService = {
   }
 };
 
+// Order Services
+export const orderService = {
+  createOrder: async (shippingAddress) => {
+    return api.post('/orders', { shippingAddress });
+  },
+  getMyOrders: async () => {
+    return api.get('/orders');
+  },
+  getOrderById: async (orderId) => {
+    return api.get(`/orders/${orderId}`);
+  }
+};
+
+// Payment Services
+export const paymentService = {
+  createPayment: async (orderId, provider = 'RAZORPAY') => {
+    return api.post('/payments', { orderId, provider });
+  },
+  getLatestPayment: async (orderId) => {
+    return api.get(`/payments/order/${orderId}/latest`);
+  },
+  verifyPayment: async (orderId) => {
+    return api.get(`/payments/order/${orderId}/latest`);
+  }
+};
+
 export default api;

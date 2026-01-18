@@ -30,7 +30,15 @@ const Profile = () => {
         
         setProfileData(profile);
         setAddresses(userAddresses);
-        setOrders(userOrders);
+        // Normalize orders data to match backend format
+        const normalizedOrders = Array.isArray(userOrders) 
+          ? userOrders.map(order => ({
+              ...order,
+              items: order.items || [],
+              createdAt: order.createdAt || new Date().toISOString(),
+            }))
+          : [];
+        setOrders(normalizedOrders);
       } catch (err) {
         console.error("Failed to load profile data", err);
       }
@@ -233,22 +241,46 @@ const Profile = () => {
                 <p>You haven't placed any orders yet. Start shopping!</p>
               </div>
             ) : (
-              orders.map(order => (
-                <div className="order-card" key={order.id}>
-                  <div className="order-header">
-                    <div className="order-id">Order #{order.id}</div>
-                    <div className="order-date">Date: {order.date}</div>
-                  </div>
-                  <div className="order-details">
-                    <div>
-                      <div className="order-total">Total: {order.total}</div>
-                      <div className="order-items">Items: {order.items}</div>
-                      <div className="order-status">Status: {order.status}</div>
+              orders.map(order => {
+                const formatDate = (dateString) => {
+                  if (!dateString) return 'N/A';
+                  try {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'short', 
+                      day: 'numeric' 
+                    });
+                  } catch {
+                    return dateString;
+                  }
+                };
+
+                const itemCount = order.items ? order.items.length : 0;
+                const totalPrice = order.totalPrice || 0;
+
+                return (
+                  <div className="order-card" key={order.id}>
+                    <div className="order-header">
+                      <div className="order-id">Order #{order.id}</div>
+                      <div className="order-date">Date: {formatDate(order.createdAt)}</div>
                     </div>
-                    <button className="view-details-btn">View Details</button>
+                    <div className="order-details">
+                      <div>
+                        <div className="order-total">Total: Rs. {Number(totalPrice).toFixed(2)}</div>
+                        <div className="order-items">Items: {itemCount}</div>
+                        <div className="order-status">Status: {order.status || 'PENDING'}</div>
+                      </div>
+                      <button 
+                        className="view-details-btn"
+                        onClick={() => window.location.href = '/orders'}
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         );

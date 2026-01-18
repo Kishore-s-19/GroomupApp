@@ -42,12 +42,30 @@ const Header = ({ variant = "default" }) => {
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Focus input when search opens
+  // Focus input when search opens and load initial products
   useEffect(() => {
     if (searchOpen && inputRef.current) {
       inputRef.current.focus();
+      // Load all products when search opens (for showing initial products)
+      if (!searchQuery.trim()) {
+        loadInitialProducts();
+      }
     }
   }, [searchOpen]);
+
+  // Load initial products when search opens
+  const loadInitialProducts = async () => {
+    try {
+      setIsSearching(true);
+      const allProducts = await productService.getAllProducts();
+      setSearchResults(allProducts.slice(0, 10)); // Show first 10 products
+      setIsSearching(false);
+    } catch (err) {
+      console.error("Error loading initial products:", err);
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  };
 
   // Perform search
   const performSearch = async (query) => {
@@ -81,8 +99,8 @@ const Header = ({ variant = "default" }) => {
 
     if (!q) {
       searchRequestIdRef.current += 1;
-      setSearchResults([]);
-      setIsSearching(false);
+      // When query is cleared, reload initial products
+      loadInitialProducts();
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
       return;
     }
@@ -238,7 +256,7 @@ const Header = ({ variant = "default" }) => {
                     </button>
                   </form>
 
-                  {searchOpen && searchQuery.trim() && (
+                  {searchOpen && (
                     <div className="nav-search-dropdown">
                       <div className="search-results">
                         {isSearching ? (
@@ -246,7 +264,7 @@ const Header = ({ variant = "default" }) => {
                             <div className="spinner"></div>
                             <span>Searching...</span>
                           </div>
-                        ) : searchQuery.trim() && searchResults.length > 0 ? (
+                        ) : searchResults.length > 0 ? (
                           <>
                             <div className="results-header">
                               <span className="results-count">
@@ -292,22 +310,24 @@ const Header = ({ variant = "default" }) => {
                                 </div>
                               );
                             })}
-                            <div className="view-all-results">
-                              <button
-                                onClick={() => {
-                                  navigate(
-                                    `/search?q=${encodeURIComponent(
-                                      searchQuery
-                                    )}`
-                                  );
-                                  setSearchOpen(false);
-                                  setSearchQuery("");
-                                  setSearchResults([]);
-                                }}
-                              >
-                                View all results for "{searchQuery}"
-                              </button>
-                            </div>
+                            {searchQuery.trim() && (
+                              <div className="view-all-results">
+                                <button
+                                  onClick={() => {
+                                    navigate(
+                                      `/search?q=${encodeURIComponent(
+                                        searchQuery
+                                      )}`
+                                    );
+                                    setSearchOpen(false);
+                                    setSearchQuery("");
+                                    setSearchResults([]);
+                                  }}
+                                >
+                                  View all results for "{searchQuery}"
+                                </button>
+                              </div>
+                            )}
                           </>
                         ) : searchQuery.trim() ? (
                           <div className="no-results">

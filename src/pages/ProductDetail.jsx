@@ -18,13 +18,22 @@ const ProductDetail = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [accordionActive, setAccordionActive] = useState([true, false, false, false]);
 
+  // Fix scroll position on mount and when productId changes
   useEffect(() => {
-    window.scrollTo({
-      top: 0,
-      left: 0,
-      behavior: "instant"
-    });
-  }, []);
+    // Scroll to top immediately when component mounts or productId changes
+    window.scrollTo(0, 0);
+    
+    // Also ensure scroll after a small delay to handle any layout shifts
+    const scrollTimer = setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: "instant"
+      });
+    }, 100);
+
+    return () => clearTimeout(scrollTimer);
+  }, [productId]);
 
   useEffect(() => {
     const fetchProduct = async () => {

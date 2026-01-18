@@ -17,6 +17,9 @@ import Profile from "./pages/Profile";
 import ProductDetail from "./pages/ProductDetail";
 import SearchResults from "./pages/SearchResults";
 import Checkout from "./pages/Checkout";
+import OrderSuccess from "./pages/OrderSuccess";
+import OrderFailure from "./pages/OrderFailure";
+import Orders from "./pages/Orders";
 
 // Layouts
 import MainLayout from "./layouts/MainLayout";
@@ -55,6 +58,9 @@ const App = () => {
                 <Route path="/product/:productId" element={<ProductDetail />} />
                 <Route path="/search" element={<SearchResults />} />
                 <Route path="/checkout" element={<Checkout />} />
+                <Route path="/orders" element={<Orders />} />
+                <Route path="/order-success" element={<OrderSuccess />} />
+                <Route path="/order-failure" element={<OrderFailure />} />
               </Route>
 
             </Routes>

@@ -113,10 +113,10 @@ const Header = ({ variant = "default" }) => {
 
   // Handle clicking on a search result
   const handleResultClick = (productId) => {
+    // Use the actual database ID directly (products start from 31)
     const idNum = Number(productId);
-    const routeId =
-      Number.isFinite(idNum) && idNum >= 31 ? idNum - 30 : productId;
-    navigate(`/product/${routeId}`);
+    const dbId = Number.isFinite(idNum) ? idNum : productId;
+    navigate(`/product/${dbId}`);
     setSearchOpen(false);
     setSearchQuery("");
     setSearchResults([]);
@@ -253,36 +253,45 @@ const Header = ({ variant = "default" }) => {
                                 {searchResults.length} results found
                               </span>
                             </div>
-                            {searchResults.map((product) => (
-                              <div
-                                key={product.id}
-                                className="search-result-item"
-                                onClick={() => handleResultClick(product.id)}
-                              >
-                                <div className="result-image">
-                                  <img
-                                    src={product.images && product.images[0]}
-                                    alt={product.name}
-                                    loading="lazy"
-                                    onError={(e) => {
-                                      e.currentTarget.onerror = null;
-                                      e.currentTarget.src =
-                                        "https://via.placeholder.com/120x160?text=Product";
-                                    }}
-                                  />
-                                </div>
-                                <div className="result-details">
-                                  <div className="result-name">
-                                    {product.name}
+                            {searchResults.map((product) => {
+                              const productImage = 
+                                (product.images && product.images.length > 0 && product.images[0]) ||
+                                product.imageUrl ||
+                                "https://via.placeholder.com/120x90?text=Product";
+                              
+                              return (
+                                <div
+                                  key={product.id}
+                                  className="search-result-item"
+                                  onClick={() => handleResultClick(product.id)}
+                                >
+                                  <div className="result-image">
+                                    <img
+                                      src={productImage}
+                                      alt={product.name || "Product"}
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src =
+                                          "https://via.placeholder.com/120x90?text=Product";
+                                      }}
+                                    />
                                   </div>
-                                  {typeof product.price === "number" && (
-                                    <div className="result-price">
-                                      Rs. {product.price.toLocaleString()}.00
+                                  <div className="result-details">
+                                    <div className="result-name">
+                                      {product.name || "Unnamed Product"}
                                     </div>
-                                  )}
+                                    {product.price && (
+                                      <div className="result-price">
+                                        ₹{typeof product.price === "number" 
+                                          ? product.price.toLocaleString("en-IN") 
+                                          : Number(product.price).toLocaleString("en-IN")}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                             <div className="view-all-results">
                               <button
                                 onClick={() => {

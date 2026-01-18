@@ -36,10 +36,10 @@ const SearchResults = () => {
   };
 
   const handleProductClick = (productId) => {
+    // Use the actual database ID directly (products start from 31)
     const idNum = Number(productId);
-    const routeId =
-      Number.isFinite(idNum) && idNum >= 31 ? idNum - 30 : productId;
-    navigate(`/product/${routeId}`);
+    const dbId = Number.isFinite(idNum) ? idNum : productId;
+    navigate(`/product/${dbId}`);
   };
 
   return (

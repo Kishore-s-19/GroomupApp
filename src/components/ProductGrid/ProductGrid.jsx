@@ -95,15 +95,17 @@ const ProductGrid = ({
   };
 
   const goToProductDetail = (product, index) => {
+    // Use the actual database ID directly (products start from 31)
     const rawId = product?.id;
     const idNum = Number(rawId);
-    const routeId =
-      Number.isFinite(idNum) && idNum >= 31
-        ? idNum - 30
-        : Number.isFinite(idNum)
-          ? idNum
-          : index + 1;
-    navigate(`/product/${routeId}`);
+    const dbId = Number.isFinite(idNum) ? idNum : null;
+    
+    if (dbId) {
+      // Use the actual database ID in the route
+      navigate(`/product/${dbId}`);
+    } else {
+      console.warn("Product ID is invalid, cannot navigate to product detail");
+    }
   };
 
   if (error) {

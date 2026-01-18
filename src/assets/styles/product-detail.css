@@ -248,6 +248,39 @@
   background-color: rgba(193, 38, 87, 0.05);
 }
 
+/* Serum-specific size styling (pill-shaped buttons) */
+.size-options.serum-sizes {
+  display: flex;
+  gap: 12px;
+  grid-template-columns: none;
+}
+
+.size-option.serum-size {
+  padding: 14px 28px;
+  border: 1px solid #ddd;
+  border-radius: 999px; /* Pill shape */
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 600;
+  font-size: 0.95rem;
+  background-color: #fff;
+  color: #333;
+  min-width: 80px;
+}
+
+.size-option.serum-size:hover {
+  border-color: #c12657;
+  background-color: rgba(193, 38, 87, 0.05);
+}
+
+.size-option.serum-size.active {
+  border-color: #c12657;
+  background-color: #c12657;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(193, 38, 87, 0.2);
+}
+
 /* Add to Cart Button */
 .add-to-cart-btn {
   width: 100%;

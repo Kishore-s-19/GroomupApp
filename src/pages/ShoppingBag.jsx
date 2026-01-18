@@ -52,13 +52,21 @@ const ShoppingBag = () => {
 
   const renderBagItem = (item) => {
     // Extract numeric price
-   const priceValue = Number(item.price);
-
+    const priceValue = Number(item.price || 0);
     
-    const attributesHTML = item.category === 'serum' || item.category === 'Serum' ? (
+    // Check if product is a serum
+    const isSerum = item.category && (
+      item.category.toLowerCase() === 'serum' || 
+      item.category.toLowerCase().includes('serum')
+    );
+
+    // Get product image with fallback
+    const productImage = item.image || item.imageUrl || 'https://via.placeholder.com/300x400?text=Product';
+
+    const attributesHTML = isSerum ? (
       <>
-        <div className="item-attribute">Volume: <span>{item.volume || '60ml'}</span></div>
-        <div className="item-attribute">Type: <span>{item.type || 'All Hair Types'}</span></div>
+        <div className="item-attribute">Volume: <span>{item.volume || item.size || '30ml'}</span></div>
+        <div className="item-attribute">Type: <span>All Skin Types</span></div>
       </>
     ) : (
       <>
@@ -69,25 +77,31 @@ const ShoppingBag = () => {
     );
 
     return (
-      
-      <div className="bag-item" key={item.id} data-id={item.id}>
+      <div className="bag-item" key={item.id || item.productId} data-id={item.id || item.productId}>
         <div className="item-image">
-          <img src={item.image} alt={item.name} />
+          <img 
+            src={productImage} 
+            alt={item.name || 'Product'} 
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://via.placeholder.com/300x400?text=Product';
+            }}
+          />
         </div>
         <div className="item-details">
           <div className="item-brand">{item.brand || 'GROOMUP'}</div>
-          <div className="item-name">{item.name}</div>
-          <div className="item-price">Rs. {(priceValue * item.quantity).toFixed(2)}</div>
+          <div className="item-name">{item.name || 'Unnamed Product'}</div>
+          <div className="item-price">Rs. {(priceValue * (item.quantity || 1)).toFixed(2)}</div>
           <div className="item-attributes">
             {attributesHTML}
           </div>
           <div className="quantity-controls">
-            <button className="quantity-btn" onClick={() => updateQuantity(item.id, Number(item.quantity) - 1)}>-</button>
-            <span className="quantity-value">{item.quantity}</span>
-            <button className="quantity-btn" onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}>+</button>
+            <button className="quantity-btn" onClick={() => updateQuantity(item.id || item.productId, Number(item.quantity || 1) - 1)}>-</button>
+            <span className="quantity-value">{item.quantity || 1}</span>
+            <button className="quantity-btn" onClick={() => updateQuantity(item.id || item.productId, Number(item.quantity || 1) + 1)}>+</button>
           </div>
-          <button className="remove-item" onClick={() => removeFromCart(item.id)}>Remove</button>
-          <div className="item-total">Total: Rs. {(priceValue * item.quantity).toFixed(2)}</div>
+          <button className="remove-item" onClick={() => removeFromCart(item.id || item.productId)}>Remove</button>
+          <div className="item-total">Total: Rs. {(priceValue * (item.quantity || 1)).toFixed(2)}</div>
         </div>
       </div>
     );

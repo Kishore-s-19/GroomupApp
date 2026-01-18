@@ -51,10 +51,33 @@ const normalizeProduct = (product) => {
   const images = Array.isArray(product.images) ? product.images.filter(Boolean) : [];
   const normalizedImages = images.length === 0 && imageUrl ? [imageUrl] : images;
 
+  // Provide defaults for missing fields that frontend expects
+  const defaults = {
+    images: normalizedImages.length > 0 ? normalizedImages : (imageUrl ? [imageUrl] : ['https://via.placeholder.com/400']),
+    colors: Array.isArray(product.colors) && product.colors.length > 0 
+      ? product.colors 
+      : [{ name: "Default", value: "default" }],
+    sizes: Array.isArray(product.sizes) && product.sizes.length > 0 
+      ? product.sizes 
+      : ["S", "M", "L", "XL"],
+    brand: product.brand || "GROOMUP",
+    originalPrice: product.originalPrice || null,
+    fitNote: product.fitNote || "",
+    materials: product.materials || "Product materials information not available.",
+    careGuide: product.careGuide || "Follow standard care instructions.",
+    deliveryInfo: product.deliveryInfo || "Free shipping on orders above Rs. 999. Standard delivery in 3-5 business days.",
+    reviews: typeof product.reviews === 'number' ? product.reviews : 0,
+    rating: typeof product.rating === 'number' ? product.rating : 0,
+    fit: product.fit && typeof product.fit === 'object' 
+      ? product.fit 
+      : { trueToSize: 50, length: 50, width: 50 },
+  };
+
   return {
     ...product,
-    imageUrl: imageUrl ?? normalizedImages[0] ?? null,
-    images: normalizedImages,
+    ...defaults,
+    imageUrl: imageUrl ?? normalizedImages[0] ?? defaults.images[0],
+    images: normalizedImages.length > 0 ? normalizedImages : defaults.images,
   };
 };
 

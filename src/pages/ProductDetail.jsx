@@ -30,29 +30,51 @@ const ProductDetail = () => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
+        // Use the route ID directly as the database ID (products start from 31)
         const rawId = productId;
         const idNum = Number(rawId);
-        const apiId =
-          Number.isFinite(idNum) && idNum >= 1 && idNum < 31 ? idNum + 30 : rawId;
+        const apiId = Number.isFinite(idNum) ? idNum : rawId;
 
         const data = await productService.getProductById(apiId);
         setProduct(data);
         
-        // Initialize size selection
-        if (data.sizes && data.sizes.length > 0) {
-          if (data.sizes.includes("One Size")) {
-            setSelectedSize("One Size");
-          } else if (data.sizes.includes("M")) {
-            setSelectedSize("M");
-          } else if (data.sizes.includes("30")) {
-            setSelectedSize("30");
-          } else if (data.sizes.includes("32")) {
-            setSelectedSize("32");
-          } else if (data.sizes.includes("S")) {
-            setSelectedSize("S");
+        // Check if product is a serum
+        const isSerum = data.category && (
+          data.category.toLowerCase() === 'serum' || 
+          data.category.toLowerCase().includes('serum')
+        );
+
+        // Initialize size selection with safe defaults
+        const safeSizes = Array.isArray(data.sizes) && data.sizes.length > 0 
+          ? data.sizes 
+          : (isSerum ? ["30ml", "60ml"] : ["S", "M", "L", "XL"]);
+        
+        if (safeSizes.length > 0) {
+          if (isSerum) {
+            // For serum, default to 30ml if available, otherwise first size
+            if (safeSizes.includes("30ml")) {
+              setSelectedSize("30ml");
+            } else {
+              setSelectedSize(safeSizes[0]);
+            }
           } else {
-            setSelectedSize(data.sizes[0]);
+            // For clothing, use existing logic
+            if (safeSizes.includes("One Size")) {
+              setSelectedSize("One Size");
+            } else if (safeSizes.includes("M")) {
+              setSelectedSize("M");
+            } else if (safeSizes.includes("30")) {
+              setSelectedSize("30");
+            } else if (safeSizes.includes("32")) {
+              setSelectedSize("32");
+            } else if (safeSizes.includes("S")) {
+              setSelectedSize("S");
+            } else {
+              setSelectedSize(safeSizes[0]);
+            }
           }
+        } else {
+          setSelectedSize(isSerum ? "30ml" : "M");
         }
         setError(null);
       } catch (err) {
@@ -109,65 +131,102 @@ const ProductDetail = () => {
     );
   }
 
-  const categoryName = product.category ? (product.category.charAt(0).toUpperCase() + product.category.slice(1)) : "Product";
-  const mainImage = product.images && product.images.length > 0 ? product.images[selectedImage] : "https://via.placeholder.com/400";
-  const rating = typeof product.rating === "number" ? product.rating : 0;
-  const reviews = typeof product.reviews === "number" ? product.reviews : 0;
-  const fit = product.fit && typeof product.fit === "object"
-    ? product.fit
-    : { trueToSize: 50, length: 50, width: 50 };
-  const popupImage = product.images && product.images.length > 0 ? product.images[0] : mainImage;
-  const popupColorName = product.colors && product.colors[selectedColor]?.name
-    ? product.colors[selectedColor].name
-    : product.colors && product.colors[0]?.name
-      ? product.colors[0].name
-      : "Default";
+  // Check if product is a serum
+  const isSerum = product.category && (
+    product.category.toLowerCase() === 'serum' || 
+    product.category.toLowerCase().includes('serum')
+  );
+
+  // Ensure all required fields have safe defaults
+  const safeProduct = {
+    ...product,
+    images: Array.isArray(product.images) && product.images.length > 0 
+      ? product.images 
+      : (product.imageUrl ? [product.imageUrl] : ['https://via.placeholder.com/400']),
+    colors: Array.isArray(product.colors) && product.colors.length > 0 
+      ? product.colors 
+      : [{ name: "Default", value: "default" }],
+    // For serum products, use ml sizes; otherwise use clothing sizes
+    sizes: isSerum 
+      ? (Array.isArray(product.sizes) && product.sizes.length > 0 
+          ? product.sizes 
+          : ["30ml", "60ml"])
+      : (Array.isArray(product.sizes) && product.sizes.length > 0 
+          ? product.sizes 
+          : ["S", "M", "L", "XL"]),
+    brand: product.brand || "GROOMUP",
+    originalPrice: product.originalPrice || null,
+    fitNote: product.fitNote || "",
+    materials: product.materials || "Product materials information not available.",
+    careGuide: product.careGuide || "Follow standard care instructions.",
+    deliveryInfo: product.deliveryInfo || "Free shipping on orders above Rs. 999. Standard delivery in 3-5 business days.",
+    reviews: typeof product.reviews === "number" ? product.reviews : 0,
+    rating: typeof product.rating === "number" ? product.rating : 0,
+    fit: product.fit && typeof product.fit === "object"
+      ? product.fit
+      : { trueToSize: 50, length: 50, width: 50 },
+  };
+
+  const categoryName = safeProduct.category ? (safeProduct.category.charAt(0).toUpperCase() + safeProduct.category.slice(1)) : "Product";
+  const mainImage = safeProduct.images[selectedImage] || safeProduct.images[0] || "https://via.placeholder.com/400";
+  const rating = safeProduct.rating;
+  const reviews = safeProduct.reviews;
+  const fit = safeProduct.fit;
+  const popupImage = safeProduct.images[0] || mainImage;
+  const popupColorName = safeProduct.colors[selectedColor]?.name || safeProduct.colors[0]?.name || "Default";
 
   return (
     <div className="product-detail-page">
       <div className="breadcrumb">
         <a onClick={() => navigate("/")}>Home</a> &gt; 
         <a onClick={() => navigate("/collection")}>Collection</a> &gt; 
-        <a onClick={() => navigate(`/category/${product.category}`)}>
+        <a onClick={() => navigate(`/category/${safeProduct.category}`)}>
           {categoryName}
         </a> &gt; 
-        <span>{product.name}</span>
+        <span>{safeProduct.name}</span>
       </div>
 
       <div className="product-container">
         <div className="product-gallery">
           <div className="main-image">
-            <img src={mainImage} alt={product.name} />
+            <img src={mainImage} alt={safeProduct.name} />
           </div>
           <div className="thumbnail-container">
-            {product.images && product.images.map((image, index) => (
-              <div 
-                key={index}
-                className={`thumbnail ${selectedImage === index ? 'active' : ''}`}
-                onClick={() => setSelectedImage(index)}
-              >
-                <img src={image} alt={`${product.name} view ${index + 1}`} />
+            {safeProduct.images && safeProduct.images.length > 0 ? (
+              safeProduct.images.map((image, index) => (
+                <div 
+                  key={index}
+                  className={`thumbnail ${selectedImage === index ? 'active' : ''}`}
+                  onClick={() => setSelectedImage(index)}
+                >
+                  <img src={image} alt={`${safeProduct.name} view ${index + 1}`} />
+                </div>
+              ))
+            ) : (
+              <div className="thumbnail active">
+                <img src={mainImage} alt={safeProduct.name} />
               </div>
-            ))}
+            )}
           </div>
         </div>
 
         <div className="product-info">
-          <div className="brand-name">{product.brand}</div>
-          <h1 className="product-title">{product.name}</h1>
+          <div className="brand-name">{safeProduct.brand}</div>
+          <h1 className="product-title">{safeProduct.name}</h1>
           <div className="product-price">
-            <span className="current-price">Rs. {product.price.toLocaleString()}.00</span>
-            {product.originalPrice && (
-              <span className="original-price">Rs. {product.originalPrice.toLocaleString()}.00</span>
+            <span className="current-price">Rs. {Number(safeProduct.price).toLocaleString()}.00</span>
+            {safeProduct.originalPrice && (
+              <span className="original-price">Rs. {Number(safeProduct.originalPrice).toLocaleString()}.00</span>
             )}
           </div>
           <p className="mrp-text">MRP Inclusive of all taxes</p>
 
-          {product.colors && product.colors.length > 0 && (
+          {/* Only show color selection for non-serum products */}
+          {!isSerum && safeProduct.colors && safeProduct.colors.length > 0 && (
             <div className="product-color">
-              <span className="color-label">COLOUR: {product.colors[selectedColor].name}</span>
+              <span className="color-label">COLOUR: {safeProduct.colors[selectedColor]?.name || safeProduct.colors[0]?.name || "Default"}</span>
               <div className="color-options">
-                {product.colors.map((color, index) => (
+                {safeProduct.colors.map((color, index) => (
                   <div 
                     key={index}
                     className={`color-option ${selectedColor === index ? 'active' : ''}`}
@@ -176,8 +235,8 @@ const ProductDetail = () => {
                       setSelectedImage(0);
                     }}
                   >
-                    <div className={`color-sample ${color.value}`}></div>
-                    <span>{color.name}</span>
+                    <div className={`color-sample ${color.value || 'default'}`}></div>
+                    <span>{color.name || "Default"}</span>
                   </div>
                 ))}
               </div>
@@ -186,19 +245,25 @@ const ProductDetail = () => {
 
           <div className="size-selection">
             <div className="size-header">
-              <span className="size-label">SELECT SIZE</span>
-              <a className="size-guide">SIZE GUIDE</a>
+              <span className="size-label">{isSerum ? "SELECT VOLUME" : "SELECT SIZE"}</span>
+              {!isSerum && <a className="size-guide">SIZE GUIDE</a>}
             </div>
-            <div className="size-options">
-              {product.sizes.map((size, index) => (
-                <div 
-                  key={index}
-                  className={`size-option ${selectedSize === size ? 'active' : ''}`}
-                  onClick={() => setSelectedSize(size)}
-                >
-                  {size}
+            <div className={`size-options ${isSerum ? 'serum-sizes' : ''}`}>
+              {safeProduct.sizes && safeProduct.sizes.length > 0 ? (
+                safeProduct.sizes.map((size, index) => (
+                  <div 
+                    key={index}
+                    className={`size-option ${isSerum ? 'serum-size' : ''} ${selectedSize === size ? 'active' : ''}`}
+                    onClick={() => setSelectedSize(size)}
+                  >
+                    {size}
+                  </div>
+                ))
+              ) : (
+                <div className={`size-option ${isSerum ? 'serum-size' : ''}`}>
+                  {isSerum ? "30ml" : "One Size"}
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -269,8 +334,8 @@ const ProductDetail = () => {
                 <i className={`fas fa-chevron-${accordionActive[0] ? 'up' : 'down'} accordion-icon`}></i>
               </div>
               <div className="accordion-content">
-                <p>{product.description}</p>
-                {product.fitNote && <p>{product.fitNote}</p>}
+                <p>{safeProduct.description || "No description available."}</p>
+                {safeProduct.fitNote && <p>{safeProduct.fitNote}</p>}
               </div>
             </div>
             <div className={`accordion-item ${accordionActive[1] ? 'active' : ''}`}>
@@ -279,7 +344,7 @@ const ProductDetail = () => {
                 <i className={`fas fa-chevron-${accordionActive[1] ? 'up' : 'down'} accordion-icon`}></i>
               </div>
               <div className="accordion-content">
-                <p>{product.materials}</p>
+                <p>{safeProduct.materials}</p>
               </div>
             </div>
             <div className={`accordion-item ${accordionActive[2] ? 'active' : ''}`}>
@@ -288,7 +353,7 @@ const ProductDetail = () => {
                 <i className={`fas fa-chevron-${accordionActive[2] ? 'up' : 'down'} accordion-icon`}></i>
               </div>
               <div className="accordion-content">
-                <p>{product.careGuide}</p>
+                <p>{safeProduct.careGuide}</p>
               </div>
             </div>
             <div className={`accordion-item ${accordionActive[3] ? 'active' : ''}`}>
@@ -297,7 +362,7 @@ const ProductDetail = () => {
                 <i className={`fas fa-chevron-${accordionActive[3] ? 'up' : 'down'} accordion-icon`}></i>
               </div>
               <div className="accordion-content">
-                <p>{product.deliveryInfo}</p>
+                <p>{safeProduct.deliveryInfo}</p>
               </div>
             </div>
           </div>
@@ -314,22 +379,22 @@ const ProductDetail = () => {
             <div className="popup-body">
               <div className="popup-item">
                 <div className="popup-item-image">
-                  <img src={popupImage} alt={product.name} />
+                  <img src={popupImage} alt={safeProduct.name} />
                 </div>
                 <div className="popup-item-details">
-                  <div className="popup-item-name">{product.name}</div>
+                  <div className="popup-item-name">{safeProduct.name}</div>
                   <div className="popup-item-attributes">
                     <div>Colour: <span>{popupColorName}</span></div>
                     <div>Size: <span>{selectedSize}</span></div>
                     <div>Quantity: 1</div>
                   </div>
-                  <div className="popup-item-price">Rs. {product.price.toLocaleString()}.00</div>
+                  <div className="popup-item-price">Rs. {Number(safeProduct.price).toLocaleString()}.00</div>
                 </div>
               </div>
               <div className="popup-summary">
                 <div className="popup-summary-row">
                   <span>Subtotal:</span>
-                  <span>Rs. {product.price.toLocaleString()}.00</span>
+                  <span>Rs. {Number(safeProduct.price).toLocaleString()}.00</span>
                 </div>
                 <div className="popup-summary-row">
                   <span>Delivery:</span>
@@ -337,7 +402,7 @@ const ProductDetail = () => {
                 </div>
                 <div className="popup-summary-row popup-summary-total">
                   <span>Total:</span>
-                  <span>Rs. {(product.price + 148).toLocaleString()}.00</span>
+                  <span>Rs. {(Number(safeProduct.price) + 148).toLocaleString()}.00</span>
                 </div>
               </div>
             </div>

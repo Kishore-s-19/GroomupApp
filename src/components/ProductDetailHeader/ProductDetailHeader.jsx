@@ -10,6 +10,7 @@ import {
 import "./ProductDetailHeader.css";
 import "../../components/Header/Header.css";
 import { productService } from "../../services/api";
+import { getSearchPlaceholder } from "../../utils/imageUtils";
 
 const ProductDetailHeader = ({ variant = "product" }) => {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -250,8 +251,7 @@ const ProductDetailHeader = ({ variant = "product" }) => {
                                   loading="lazy"
                                   onError={(e) => {
                                     e.currentTarget.onerror = null;
-                                    e.currentTarget.src =
-                                      "https://via.placeholder.com/120x160?text=Product";
+                                    e.currentTarget.src = getSearchPlaceholder();
                                   }}
                                 />
                               </div>

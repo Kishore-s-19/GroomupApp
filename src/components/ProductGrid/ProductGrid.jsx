@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { productService } from "../../services/api";
+import { getProductPlaceholder } from "../../utils/imageUtils";
 import "../../assets/styles/homepage.css";
 import "../../assets/styles/product-grid.css";
 
@@ -168,7 +169,7 @@ const ProductGrid = ({
                     alt={product.name}
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = "https://via.placeholder.com/300x400?text=Product+Image";
+                      e.target.src = getProductPlaceholder();
                     }}
                   />
                 </div>

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import {
   FaSearch,
@@ -12,6 +12,7 @@ import "./Header.css";
 import { productService } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import { useCart } from "../../contexts/CartContext";
+import { getSearchPlaceholder, getProductImage } from "../../utils/imageUtils";
 
 const Header = ({ variant = "default" }) => {
   const { isAuthenticated } = useAuth();
@@ -42,30 +43,39 @@ const Header = ({ variant = "default" }) => {
       document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Load initial products when search opens - memoized with useCallback
+  const loadInitialProducts = useCallback(async () => {
+    try {
+      setIsSearching(true);
+      const allProducts = await productService.getAllProducts();
+      // Products loaded for search
+      if (allProducts && Array.isArray(allProducts) && allProducts.length > 0) {
+        setSearchResults(allProducts.slice(0, 10)); // Show first 10 products
+      } else {
+        setSearchResults([]);
+      }
+      setIsSearching(false);
+    } catch (err) {
+      // Silently handle error - don't spam console
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, []);
+
   // Focus input when search opens and load initial products
   useEffect(() => {
     if (searchOpen && inputRef.current) {
       inputRef.current.focus();
-      // Load all products when search opens (for showing initial products)
+      // Always load initial products when search opens (if no query yet)
       if (!searchQuery.trim()) {
         loadInitialProducts();
       }
-    }
-  }, [searchOpen]);
-
-  // Load initial products when search opens
-  const loadInitialProducts = async () => {
-    try {
-      setIsSearching(true);
-      const allProducts = await productService.getAllProducts();
-      setSearchResults(allProducts.slice(0, 10)); // Show first 10 products
-      setIsSearching(false);
-    } catch (err) {
-      console.error("Error loading initial products:", err);
+    } else if (!searchOpen) {
+      // Clear results when search closes
       setSearchResults([]);
-      setIsSearching(false);
+      setSearchQuery("");
     }
-  };
+  }, [searchOpen, loadInitialProducts]);
 
   // Perform search
   const performSearch = async (query) => {
@@ -82,7 +92,7 @@ const Header = ({ variant = "default" }) => {
       if (requestId !== searchRequestIdRef.current) return;
       setSearchResults(results.slice(0, 10)); // Limit to 10 results
     } catch (err) {
-      console.error("Search error:", err);
+      // Silently handle search error
       setSearchResults([]);
     } finally {
       if (requestId === searchRequestIdRef.current) {
@@ -144,8 +154,8 @@ const Header = ({ variant = "default" }) => {
   const clearSearch = () => {
     searchRequestIdRef.current += 1;
     setSearchQuery("");
-    setSearchResults([]);
-    setIsSearching(false);
+    // Reload initial products when clearing
+    loadInitialProducts();
     if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
     if (inputRef.current) inputRef.current.focus();
   };
@@ -268,36 +278,36 @@ const Header = ({ variant = "default" }) => {
                           <>
                             <div className="results-header">
                               <span className="results-count">
-                                {searchResults.length} results found
+                                {searchQuery.trim() 
+                                  ? `${searchResults.length} results found` 
+                                  : `${searchResults.length} products`}
                               </span>
                             </div>
                             {searchResults.map((product) => {
-                              const productImage = 
-                                (product.images && product.images.length > 0 && product.images[0]) ||
-                                product.imageUrl ||
-                                "https://via.placeholder.com/120x90?text=Product";
+                              // Get product image using utility function
+                              const finalImage = getProductImage(product) || getSearchPlaceholder();
                               
                               return (
                                 <div
-                                  key={product.id}
+                                  key={product.id || product.productId || `product-${Math.random()}`}
                                   className="search-result-item"
-                                  onClick={() => handleResultClick(product.id)}
+                                  onClick={() => handleResultClick(product.id || product.productId)}
                                 >
                                   <div className="result-image">
                                     <img
-                                      src={productImage}
-                                      alt={product.name || "Product"}
+                                      src={finalImage}
+                                      alt={product.name || product.productName || "Product"}
                                       loading="lazy"
                                       onError={(e) => {
+                                        // If image fails to load, use data URI placeholder
                                         e.currentTarget.onerror = null;
-                                        e.currentTarget.src =
-                                          "https://via.placeholder.com/120x90?text=Product";
+                                        e.currentTarget.src = getSearchPlaceholder();
                                       }}
                                     />
                                   </div>
                                   <div className="result-details">
                                     <div className="result-name">
-                                      {product.name || "Unnamed Product"}
+                                      {product.name || product.productName || "Unnamed Product"}
                                     </div>
                                     {product.price && (
                                       <div className="result-price">
@@ -333,7 +343,12 @@ const Header = ({ variant = "default" }) => {
                           <div className="no-results">
                             <span>No products found for "{searchQuery}"</span>
                           </div>
-                        ) : null}
+                        ) : (
+                          <div className="search-loading">
+                            <div className="spinner"></div>
+                            <span>Loading products...</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

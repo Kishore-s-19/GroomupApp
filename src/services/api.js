@@ -52,8 +52,9 @@ const normalizeProduct = (product) => {
   const normalizedImages = images.length === 0 && imageUrl ? [imageUrl] : images;
 
   // Provide defaults for missing fields that frontend expects
+  // Note: We don't set placeholder images here - let components handle it
   const defaults = {
-    images: normalizedImages.length > 0 ? normalizedImages : (imageUrl ? [imageUrl] : ['https://via.placeholder.com/400']),
+    images: normalizedImages.length > 0 ? normalizedImages : (imageUrl ? [imageUrl] : []),
     colors: Array.isArray(product.colors) && product.colors.length > 0 
       ? product.colors 
       : [{ name: "Default", value: "default" }],

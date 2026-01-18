@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { orderService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { getOrderItemPlaceholder } from '../utils/imageUtils';
 import '../assets/styles/orders.css';
 
 const Orders = () => {
@@ -123,11 +124,11 @@ const Orders = () => {
                       <div className="order-item" key={index}>
                         <div className="order-item-image">
                           <img 
-                            src={item.productImage || 'https://via.placeholder.com/80x80?text=Product'} 
+                            src={item.productImage || getOrderItemPlaceholder()} 
                             alt={item.productName || 'Product'}
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = 'https://via.placeholder.com/80x80?text=Product';
+                              e.target.src = getOrderItemPlaceholder();
                             }}
                           />
                         </div>

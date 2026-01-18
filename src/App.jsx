@@ -31,7 +31,7 @@ import "./assets/styles/global.css";
 import "./assets/styles/store-locator.css";
 
 const App = () => {
-  console.log("🚀 App component rendering");
+  // Removed console.log for production
 
   return (
     <AuthProvider>

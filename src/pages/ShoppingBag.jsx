@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
+import { getOrderItemPlaceholder } from '../utils/imageUtils';
 import '../assets/styles/shopping-bag.css'; // Your CSS file
 
 const ShoppingBag = () => {
@@ -61,7 +62,7 @@ const ShoppingBag = () => {
     );
 
     // Get product image with fallback
-    const productImage = item.image || item.imageUrl || 'https://via.placeholder.com/300x400?text=Product';
+    const productImage = item.image || item.imageUrl || getOrderItemPlaceholder();
 
     const attributesHTML = isSerum ? (
       <>
@@ -84,7 +85,7 @@ const ShoppingBag = () => {
             alt={item.name || 'Product'} 
             onError={(e) => {
               e.target.onerror = null;
-              e.target.src = 'https://via.placeholder.com/300x400?text=Product';
+              e.target.src = getOrderItemPlaceholder();
             }}
           />
         </div>

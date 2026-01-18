@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { productService } from "../services/api";
 import { useCart } from "../contexts/CartContext";
+import { getProductPlaceholder } from "../utils/imageUtils";
 import "../assets/styles/product-detail.css";
 
 const ProductDetail = () => {
@@ -151,7 +152,7 @@ const ProductDetail = () => {
     ...product,
     images: Array.isArray(product.images) && product.images.length > 0 
       ? product.images 
-      : (product.imageUrl ? [product.imageUrl] : ['https://via.placeholder.com/400']),
+      : (product.imageUrl ? [product.imageUrl] : []),
     colors: Array.isArray(product.colors) && product.colors.length > 0 
       ? product.colors 
       : [{ name: "Default", value: "default" }],
@@ -177,7 +178,7 @@ const ProductDetail = () => {
   };
 
   const categoryName = safeProduct.category ? (safeProduct.category.charAt(0).toUpperCase() + safeProduct.category.slice(1)) : "Product";
-  const mainImage = safeProduct.images[selectedImage] || safeProduct.images[0] || "https://via.placeholder.com/400";
+  const mainImage = safeProduct.images[selectedImage] || safeProduct.images[0] || getProductPlaceholder();
   const rating = safeProduct.rating;
   const reviews = safeProduct.reviews;
   const fit = safeProduct.fit;

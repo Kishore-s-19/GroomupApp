@@ -445,19 +445,31 @@ const Checkout = () => {
             <h3 className="summary-header">Order Summary</h3>
             
             <div className="cart-items-preview">
-              {cart.map(item => (
-                <div className="mini-item" key={item.id}>
-                  <img src={item.image} alt={item.name} className="mini-item-img" />
-                  <div className="mini-item-info">
-                    <div className="mini-item-name">{item.name}</div>
-                    <div className="mini-item-meta">
-                      <span>Qty: {item.quantity}</span>
-                      <span>Rs. {(Number(item.price) * item.quantity).toFixed(2)}</span>
+                {cart.map(item => {
+                  const itemImage = item.image || item.imageUrl || '/placeholder-product.png';
+                  const itemName = item.name || 'Product';
+                  return (
+                    <div className="mini-item" key={item.id || item.productId}>
+                      <img 
+                        src={itemImage} 
+                        alt={itemName} 
+                        className="mini-item-img"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = '/placeholder-product.png';
+                        }}
+                      />
+                      <div className="mini-item-info">
+                        <div className="mini-item-name">{itemName}</div>
+                        <div className="mini-item-meta">
+                          <span>Qty: {item.quantity}</span>
+                          <span>Rs. {(Number(item.price) * item.quantity).toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  );
+                })}
+              </div>
 
             <div className="summary-totals">
               <div className="summary-row">

@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { userService } from "../services/api";
 import "../assets/styles/profile.css";
 
 const Profile = () => {
-  const [activePage, setActivePage] = useState("profile");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') || 'profile';
+  const [activePage, setActivePage] = useState(initialTab);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActivePage(tab);
+    }
+  }, [searchParams]);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showAddAddressModal, setShowAddAddressModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);

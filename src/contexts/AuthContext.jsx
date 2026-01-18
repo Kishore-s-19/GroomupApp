@@ -18,25 +18,26 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    // Check for existing session
+  const [user, setUser] = useState(() => {
     const storedUser = localStorage.getItem('groomupUser');
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
         if (isValidJwt(parsed?.token)) {
-          setUser(parsed);
-        } else {
-          localStorage.removeItem('groomupUser');
+          return parsed;
         }
       } catch {
         localStorage.removeItem('groomupUser');
       }
     }
+    return null;
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    // Session check is now handled in state initialization, 
+    // but we can keep the loading state for any future async checks if needed.
     setLoading(false);
   }, []);
 

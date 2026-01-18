@@ -106,12 +106,24 @@ const ProductDetail = () => {
     const selectedColorData = product.colors && product.colors[selectedColor];
     const colorName = selectedColorData ? selectedColorData.name : (product.colors && product.colors[0] ? product.colors[0].name : "Default");
     
-    // Use the addToCart from Context
-    const result = await addToCart(product, colorName, selectedSize, 1);
+    const productImages = Array.isArray(product.images) && product.images.length > 0 
+      ? product.images 
+      : (product.imageUrl ? [product.imageUrl] : []);
+    
+    const productWithImages = {
+      ...product,
+      images: productImages,
+      image: productImages[0] || product.imageUrl || '',
+      imageUrl: product.imageUrl || productImages[0] || '',
+      brand: product.brand || 'GROOMUP',
+      category: product.category || '',
+      artNo: product.artNo || product.id?.toString() || '',
+    };
+    
+    const result = await addToCart(productWithImages, colorName, selectedSize, 1);
     
     if (result.success) {
       setShowPopup(true);
-      // Auto hide popup after 3 seconds
       setTimeout(() => setShowPopup(false), 3000);
     } else {
       alert("Failed to add to cart");

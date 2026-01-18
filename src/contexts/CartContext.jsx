@@ -18,13 +18,29 @@ export const CartProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const { isAuthenticated } = useAuth();
 
+  const normalizeCartItem = (item) => ({
+    id: item.id,
+    productId: item.productId,
+    name: item.productName || item.name || 'Product',
+    image: item.productImage || item.image || '',
+    imageUrl: item.productImage || item.imageUrl || item.image || '',
+    price: item.price,
+    quantity: item.quantity,
+    brand: item.brand || 'GROOMUP',
+    color: item.color || 'N/A',
+    size: item.size || 'N/A',
+    artNo: item.artNo || item.productId?.toString() || 'N/A',
+    category: item.category || '',
+  });
+
   const fetchCart = useCallback(async () => {
     if (!isAuthenticated) return;
 
     try {
       setLoading(true);
       const response = await cartService.getCart();
-      setCart(response.items);
+      const normalizedItems = (response.items || []).map(normalizeCartItem);
+      setCart(normalizedItems);
     } catch (err) {
       setError(err.message || 'Failed to fetch cart');
       console.error('Cart fetch error:', err);
@@ -44,21 +60,28 @@ export const CartProvider = ({ children }) => {
   }, [isAuthenticated, fetchCart]);
 
   const addToCart = async (product, color, size, quantity = 1) => {
+    const productImage = (Array.isArray(product.images) && product.images.length > 0) 
+      ? product.images[0] 
+      : (product.imageUrl || product.image || '');
+    
     const itemData = {
       productId: product.id,
-      name: product.name,
+      name: product.name || 'Product',
       price: product.price,
-      image: product.images[0],
-      brand: product.brand,
+      image: productImage,
+      brand: product.brand || 'GROOMUP',
       color,
       size,
       quantity,
+      category: product.category || '',
+      artNo: product.artNo || product.id?.toString() || '',
     };
 
     if (isAuthenticated) {
       try {
         const response = await cartService.addToCart(itemData);
-        setCart(response.items);
+        const normalizedItems = (response.items || []).map(normalizeCartItem);
+        setCart(normalizedItems);
         return { success: true, data: response };
       } catch (err) {
         setError(err.message || 'Failed to add to cart');
@@ -94,7 +117,8 @@ export const CartProvider = ({ children }) => {
     if (isAuthenticated) {
       try {
         const response = await cartService.updateCartItem(itemId, quantity);
-        setCart(response.items);
+        const normalizedItems = (response.items || []).map(normalizeCartItem);
+        setCart(normalizedItems);
         return { success: true };
       } catch (err) {
         setError(err.message || 'Failed to update cart');
@@ -114,7 +138,8 @@ export const CartProvider = ({ children }) => {
     if (isAuthenticated) {
       try {
         const response = await cartService.removeFromCart(itemId);
-        setCart(response.items);
+        const normalizedItems = (response.items || []).map(normalizeCartItem);
+        setCart(normalizedItems);
         return { success: true };
       } catch (err) {
         setError(err.message || 'Failed to remove item');

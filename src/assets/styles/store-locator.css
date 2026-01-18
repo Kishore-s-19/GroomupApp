@@ -189,7 +189,7 @@
     border-color: var(--primary-color);
 }
 
-.search-results {
+.store-locator-page .search-results {
     margin-top: 10px;
     max-height: 200px;
     overflow-y: auto;
@@ -198,24 +198,24 @@
     transition: all 0.3s ease;
 }
 
-.search-bar.active .search-results {
+.store-locator-page .search-bar.active .search-results {
     opacity: 1;
     transform: translateY(0);
     transition-delay: 0.2s;
 }
 
-.search-result-item {
+.store-locator-page .search-result-item {
     padding: 8px 12px;
     border-bottom: 1px solid var(--border-color);
     cursor: pointer;
     transition: background-color 0.3s;
 }
 
-.search-result-item:hover {
+.store-locator-page .search-result-item:hover {
     background-color: var(--background-light);
 }
 
-.search-result-item:last-child {
+.store-locator-page .search-result-item:last-child {
     border-bottom: none;
 }
 

@@ -38,10 +38,16 @@ public class Product {
     private int stockQuantity;
 
     @Column(nullable = false)
+    private int reservedQuantity = 0;
+
+    @Column(nullable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private LocalDateTime updatedAt;
+
+    @Version
+    private Long version;
 
     public Product() {
     }
@@ -100,6 +106,22 @@ public class Product {
 
     public void setStockQuantity(int stockQuantity) {
         this.stockQuantity = stockQuantity;
+    }
+
+    public int getReservedQuantity() {
+        return reservedQuantity;
+    }
+
+    public void setReservedQuantity(int reservedQuantity) {
+        this.reservedQuantity = reservedQuantity;
+    }
+
+    public int getAvailableQuantity() {
+        return stockQuantity - reservedQuantity;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public LocalDateTime getCreatedAt() {

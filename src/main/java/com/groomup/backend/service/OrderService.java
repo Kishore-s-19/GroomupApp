@@ -9,9 +9,15 @@ import com.groomup.backend.repository.OrderRepository;
 import com.groomup.backend.repository.PaymentRepository;
 import com.groomup.backend.repository.ProductRepository;
 import com.groomup.backend.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,9 +28,12 @@ import java.util.stream.Collectors;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.CONFLICT;
 
 @Service
 public class OrderService {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderService.class);
 
     private final OrderRepository orderRepository;
     private final CartRepository cartRepository;
@@ -49,7 +58,12 @@ public class OrderService {
         this.cartService = cartService;
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Retryable(
+        retryFor = ObjectOptimisticLockingFailureException.class,
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 100)
+    )
     public OrderResponse createOrder(OrderRequest request) {
         User user = getCurrentUser();
         Cart cart = cartRepository.findByUser(user)
@@ -72,15 +86,16 @@ public class OrderService {
                 throw new ResponseStatusException(BAD_REQUEST, "Invalid quantity");
             }
 
-            Product product = cartItem.getProduct();
-            if (product == null) {
-                throw new ResponseStatusException(BAD_REQUEST, "Invalid product");
-            }
-            if (product.getStockQuantity() < quantity) {
-                throw new ResponseStatusException(BAD_REQUEST, "Insufficient stock");
+            Product product = productRepository.findById(cartItem.getProduct().getId())
+                    .orElseThrow(() -> new ResponseStatusException(BAD_REQUEST, "Product not found"));
+            
+            int availableQty = product.getAvailableQuantity();
+            if (availableQty < quantity) {
+                throw new ResponseStatusException(CONFLICT, 
+                    "Insufficient stock for " + product.getName() + ". Available: " + availableQty);
             }
 
-            product.setStockQuantity(product.getStockQuantity() - quantity);
+            product.setReservedQuantity(product.getReservedQuantity() + quantity);
             productRepository.save(product);
 
             OrderItem orderItem = new OrderItem(
@@ -96,10 +111,43 @@ public class OrderService {
         order.setTotalPrice(totalPrice);
         Order savedOrder = orderRepository.save(order);
 
-        // Clear cart after order is placed
         cartService.clearCart(user);
 
+        log.info("Order created: {} for user: {} with reserved stock", savedOrder.getId(), user.getEmail());
         return toOrderResponse(savedOrder);
+    }
+
+    @Transactional
+    public void confirmStockDeduction(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            int qty = item.getQuantity();
+            
+            product.setStockQuantity(product.getStockQuantity() - qty);
+            product.setReservedQuantity(product.getReservedQuantity() - qty);
+            productRepository.save(product);
+        }
+        
+        log.info("Stock deducted for order: {}", orderId);
+    }
+
+    @Transactional
+    public void releaseReservedStock(Long orderId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+
+        for (OrderItem item : order.getItems()) {
+            Product product = item.getProduct();
+            int qty = item.getQuantity();
+            
+            product.setReservedQuantity(Math.max(0, product.getReservedQuantity() - qty));
+            productRepository.save(product);
+        }
+        
+        log.info("Reserved stock released for order: {}", orderId);
     }
 
     public List<OrderResponse> getMyOrders() {
@@ -140,7 +188,7 @@ public class OrderService {
             throw new ResponseStatusException(BAD_REQUEST, "Order cannot be cancelled");
         }
 
-        restoreStock(order);
+        releaseReservedStock(order.getId());
         order.setStatus("CANCELLED");
         Order saved = orderRepository.save(order);
 
@@ -149,6 +197,7 @@ public class OrderService {
             paymentRepository.save(latestPayment);
         }
 
+        log.info("Order cancelled: {}", id);
         return toOrderResponse(saved);
     }
 
@@ -163,6 +212,15 @@ public class OrderService {
 
         order.setStatus("DELIVERED");
         return toOrderResponse(orderRepository.save(order));
+    }
+
+    @Transactional
+    public void updateOrderStatus(Long orderId, String status) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+        order.setStatus(status);
+        orderRepository.save(order);
+        log.info("Order {} status updated to {}", orderId, status);
     }
 
     private User getCurrentUser() {
@@ -180,25 +238,6 @@ public class OrderService {
             return false;
         }
         return "PAID".equals(status) || "DELIVERED".equals(status) || "CANCELLED".equals(status);
-    }
-
-    private void restoreStock(Order order) {
-        List<OrderItem> items = order.getItems();
-        if (items == null || items.isEmpty()) {
-            return;
-        }
-        for (OrderItem item : items) {
-            Product product = item.getProduct();
-            if (product == null) {
-                continue;
-            }
-            int restoreQty = item.getQuantity();
-            if (restoreQty <= 0) {
-                continue;
-            }
-            product.setStockQuantity(product.getStockQuantity() + restoreQty);
-            productRepository.save(product);
-        }
     }
 
     private OrderResponse toOrderResponse(Order order) {

@@ -1,5 +1,8 @@
 package com.groomup.backend.service;
 
+import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -18,21 +21,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.springframework.http.HttpStatus.BAD_GATEWAY;
+import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 
 @Service
 public class RazorpayGatewayService {
 
+    private static final Logger log = LoggerFactory.getLogger(RazorpayGatewayService.class);
+    private static final String RAZORPAY_API_URL = "https://api.razorpay.com";
+
     private final HttpClient httpClient;
-    private final String baseUrl;
     private final String keyId;
     private final String keySecret;
 
+    @Value("${app.environment:development}")
+    private String environment;
+
     public RazorpayGatewayService(
-            @Value("${razorpay.base-url}") String baseUrl,
-            @Value("${razorpay.key-id}") String keyId,
-            @Value("${razorpay.key-secret}") String keySecret
+            @Value("${razorpay.key-id:}") String keyId,
+            @Value("${razorpay.key-secret:}") String keySecret
     ) {
-        this.baseUrl = baseUrl;
         this.keyId = keyId;
         this.keySecret = keySecret;
         this.httpClient = HttpClient.newBuilder()
@@ -40,43 +47,96 @@ public class RazorpayGatewayService {
                 .build();
     }
 
+    @PostConstruct
+    public void validateConfiguration() {
+        if (keyId == null || keyId.isBlank()) {
+            log.warn("Razorpay Key ID not configured. Payments will fail.");
+        } else if (keyId.startsWith("rzp_test_")) {
+            log.info("Razorpay configured in TEST mode");
+        } else if (keyId.startsWith("rzp_live_")) {
+            log.info("Razorpay configured in LIVE mode");
+        } else {
+            log.warn("Razorpay Key ID format unrecognized: {}", keyId.substring(0, Math.min(10, keyId.length())));
+        }
+
+        if (keySecret == null || keySecret.isBlank()) {
+            log.warn("Razorpay Key Secret not configured. Payments will fail.");
+        }
+
+        if ("production".equalsIgnoreCase(environment) && keyId != null && keyId.startsWith("rzp_test_")) {
+            log.error("WARNING: Using TEST Razorpay keys in PRODUCTION environment!");
+        }
+    }
+
     public String getKeyId() {
         return keyId;
     }
 
+    public boolean isLiveMode() {
+        return keyId != null && keyId.startsWith("rzp_live_");
+    }
+
+    public boolean isConfigured() {
+        return keyId != null && !keyId.isBlank() && keySecret != null && !keySecret.isBlank();
+    }
+
     public String createOrder(BigDecimal amount, String currency, String receipt) {
+        if (!isConfigured()) {
+            log.error("Razorpay not configured. Cannot create order.");
+            throw new ResponseStatusException(SERVICE_UNAVAILABLE, "Payment gateway not configured");
+        }
+
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payment amount");
+        }
+
         long amountSubunits = amount
                 .movePointRight(2)
                 .setScale(0, RoundingMode.HALF_UP)
                 .longValueExact();
 
+        if (amountSubunits < 100) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Minimum payment amount is Rs. 1");
+        }
+
+        String sanitizedReceipt = escapeJson(receipt != null ? receipt.substring(0, Math.min(40, receipt.length())) : "order");
+        String sanitizedCurrency = escapeJson(currency != null ? currency.toUpperCase() : "INR");
+
         String body = "{\"amount\":" + amountSubunits
-                + ",\"currency\":\"" + escapeJson(currency)
-                + "\",\"receipt\":\"" + escapeJson(receipt)
+                + ",\"currency\":\"" + sanitizedCurrency
+                + "\",\"receipt\":\"" + sanitizedReceipt
                 + "\",\"payment_capture\":1}";
 
         String authHeader = buildBasicAuthHeader(keyId, keySecret);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(normalizeBaseUrl(baseUrl) + "/v1/orders"))
-                .timeout(Duration.ofSeconds(20))
+                .uri(URI.create(RAZORPAY_API_URL + "/v1/orders"))
+                .timeout(Duration.ofSeconds(30))
                 .header("Authorization", authHeader)
                 .header("Content-Type", "application/json")
+                .header("User-Agent", "Groomup-Backend/1.0")
                 .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
                 .build();
 
         HttpResponse<String> response;
         try {
+            log.debug("Creating Razorpay order: amount={}, currency={}", amountSubunits, sanitizedCurrency);
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        } catch (java.net.http.HttpTimeoutException e) {
+            log.error("Razorpay request timed out", e);
+            throw new ResponseStatusException(BAD_GATEWAY, "Payment gateway timeout. Please try again.");
         } catch (Exception e) {
-            throw new ResponseStatusException(BAD_GATEWAY, "Razorpay order creation failed: Gateway unreachable");
+            log.error("Razorpay request failed", e);
+            throw new ResponseStatusException(BAD_GATEWAY, "Payment gateway unreachable. Please try again later.");
         }
 
         if (response.statusCode() == HttpStatus.OK.value() || response.statusCode() == HttpStatus.CREATED.value()) {
             String id = extractJsonString(response.body(), "id");
             if (id == null || id.isBlank()) {
-                throw new ResponseStatusException(BAD_GATEWAY, "Razorpay order creation failed: Invalid gateway response");
+                log.error("Razorpay returned success but no order ID: {}", response.body());
+                throw new ResponseStatusException(BAD_GATEWAY, "Invalid response from payment gateway");
             }
+            log.info("Razorpay order created: {}", id);
             return id;
         }
 
@@ -84,7 +144,16 @@ public class RazorpayGatewayService {
         if (description == null || description.isBlank()) {
             description = "HTTP " + response.statusCode();
         }
-        throw new ResponseStatusException(BAD_GATEWAY, "Razorpay order creation failed: " + description);
+        
+        log.error("Razorpay order creation failed: {} - {}", response.statusCode(), description);
+        
+        if (response.statusCode() == 401) {
+            throw new ResponseStatusException(BAD_GATEWAY, "Payment gateway authentication failed");
+        } else if (response.statusCode() == 400) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payment request: " + description);
+        }
+        
+        throw new ResponseStatusException(BAD_GATEWAY, "Payment gateway error: " + description);
     }
 
     private static String buildBasicAuthHeader(String keyId, String keySecret) {
@@ -106,16 +175,6 @@ public class RazorpayGatewayService {
             return code;
         }
         return null;
-    }
-
-    private static String normalizeBaseUrl(String baseUrl) {
-        if (baseUrl == null) {
-            return "";
-        }
-        if (baseUrl.endsWith("/")) {
-            return baseUrl.substring(0, baseUrl.length() - 1);
-        }
-        return baseUrl;
     }
 
     private static String extractJsonString(String json, String key) {

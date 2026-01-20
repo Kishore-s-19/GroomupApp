@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
 @Configuration
 public class SecurityConfig {
@@ -34,34 +35,36 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            // ❌ Disable CSRF (REST API)
             .csrf(csrf -> csrf.disable())
 
-            // ✅ Enable CORS
             .cors(Customizer.withDefaults())
 
-            // ❌ Disable form & basic auth
+            .headers(headers -> headers
+                .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
+                .frameOptions(frame -> frame.deny())
+            )
+
             .formLogin(form -> form.disable())
             .httpBasic(basic -> basic.disable())
 
-            // ✅ JWT = Stateless
             .sessionManagement(sess ->
                 sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
 
-            // 🔐 AUTHORIZATION RULES (ORDER MATTERS)
             .authorizeHttpRequests(auth -> auth
 
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/error").permitAll()
 
-                // 🔓 PUBLIC – auth endpoints
                 .requestMatchers("/api/auth/**").permitAll()
 
-                // 🔓 PUBLIC – product READ
-                .requestMatchers(HttpMethod.GET, "/api/products/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
 
-                // 🔒 USER – must be logged in (JWT)
+                .requestMatchers("/api/payments/webhook/**").permitAll()
+
+                .requestMatchers("/api/payments/**").authenticated()
+
                 .requestMatchers(
                         "/api/cart/**",
                         "/api/profile/**",
@@ -69,21 +72,15 @@ public class SecurityConfig {
                         "/api/orders/**"
                 ).authenticated()
 
-                // 🔒 ADMIN – product WRITE
-             // 🔒 ADMIN – product WRITE
                 .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
 
-
-                // 🔒 Everything else
                 .anyRequest().authenticated()
             )
 
-            // Authentication provider
             .authenticationProvider(authenticationProvider())
 
-            // JWT filter
             .addFilterBefore(
                     jwtAuthFilter,
                     UsernamePasswordAuthenticationFilter.class
@@ -92,19 +89,15 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // =========================
-    // AUTH BEANS
-    // =========================
-
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        return new BCryptPasswordEncoder(12);
     }
 
     @Bean
     public AuthenticationProvider authenticationProvider() {
-        DaoAuthenticationProvider provider =
-                new DaoAuthenticationProvider(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+        provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder());
         return provider;
     }

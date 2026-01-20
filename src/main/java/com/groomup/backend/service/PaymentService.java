@@ -35,6 +35,7 @@ import java.util.regex.Pattern;
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
+import static org.springframework.http.HttpStatus.CONFLICT;
 
 @Service
 public class PaymentService {
@@ -46,8 +47,9 @@ public class PaymentService {
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final RazorpayGatewayService razorpayGatewayService;
+    private final OrderService orderService;
 
-    @Value("${razorpay.webhook-secret}")
+    @Value("${razorpay.webhook-secret:}")
     private String webhookSecret;
 
     public PaymentService(
@@ -55,18 +57,17 @@ public class PaymentService {
             PaymentRepository paymentRepository,
             ProductRepository productRepository,
             UserRepository userRepository,
-            RazorpayGatewayService razorpayGatewayService
+            RazorpayGatewayService razorpayGatewayService,
+            OrderService orderService
     ) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.productRepository = productRepository;
         this.userRepository = userRepository;
         this.razorpayGatewayService = razorpayGatewayService;
+        this.orderService = orderService;
     }
 
-    // =====================================================
-    // CREATE PAYMENT (EXISTING CODE - UNCHANGED)
-    // =====================================================
     @Transactional
     public PaymentResponse createPayment(PaymentRequest request) {
         if (request.getOrderId() == null) {
@@ -89,6 +90,10 @@ public class PaymentService {
 
         if (order.getTotalPrice() == null || order.getTotalPrice().compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(BAD_REQUEST, "Invalid order amount");
+        }
+
+        if ("PAID".equals(order.getStatus())) {
+            throw new ResponseStatusException(CONFLICT, "Order already paid");
         }
 
         Payment latest = paymentRepository
@@ -120,6 +125,8 @@ public class PaymentService {
         payment.setStatus(PaymentStatus.PENDING);
 
         Payment saved = paymentRepository.save(payment);
+
+        log.info("Payment created: {} for order: {}", saved.getId(), order.getId());
 
         return new PaymentResponse(
                 saved.getId(),
@@ -182,7 +189,7 @@ public class PaymentService {
                 continue;
             }
 
-            restoreStock(order);
+            orderService.releaseReservedStock(order.getId());
             order.setStatus("CANCELLED");
             orderRepository.save(order);
 
@@ -194,26 +201,19 @@ public class PaymentService {
         }
     }
 
-    // =====================================================
-    // RAZORPAY WEBHOOK HANDLER (NEW CODE)
-    // =====================================================
     @Transactional
     public void handleRazorpayWebhook(String payload, String signature) {
+        if (webhookSecret == null || webhookSecret.isBlank()) {
+            log.error("Webhook secret not configured");
+            throw new ResponseStatusException(BAD_REQUEST, "Webhook not configured");
+        }
 
         if (!verifySignature(payload, signature)) {
+            log.warn("Invalid Razorpay webhook signature");
             throw new ResponseStatusException(BAD_REQUEST, "Invalid Razorpay signature");
         }
 
-        // For now we just log (next step DB update pannalaam)
-        System.out.println("✅ Razorpay webhook verified successfully");
-        System.out.println(payload);
-
-        // TODO (next step):
-        // 1. Parse JSON
-        // 2. Extract order_id
-        // 3. Find Payment by gatewayOrderId
-        // 4. Mark PaymentStatus.SUCCESS
-        // 5. Mark Order as PAID
+        log.info("Razorpay webhook verified successfully");
 
         String event = extractJsonString(payload, "event");
         if (event == null || event.isBlank()) {
@@ -221,6 +221,7 @@ public class PaymentService {
         }
 
         if (!"payment.captured".equals(event)) {
+            log.info("Ignoring webhook event: {}", event);
             return;
         }
 
@@ -234,13 +235,26 @@ public class PaymentService {
             throw new ResponseStatusException(BAD_REQUEST, "Invalid webhook payload: missing payment id");
         }
 
+        Payment existingByPaymentId = paymentRepository.findByGatewayPaymentId(gatewayPaymentId).orElse(null);
+        if (existingByPaymentId != null && existingByPaymentId.getStatus() == PaymentStatus.SUCCESS) {
+            log.info("Duplicate webhook received for paymentId={}, ignoring", gatewayPaymentId);
+            return;
+        }
+
         Payment payment = paymentRepository.findByGatewayOrderId(gatewayOrderId)
                 .orElseThrow(() -> new ResponseStatusException(
                         NOT_FOUND,
                         "Payment not found for gatewayOrderId " + gatewayOrderId
                 ));
 
-        if (payment.getStatus() == PaymentStatus.EXPIRED || payment.getStatus() == PaymentStatus.FAILED || payment.getStatus() == PaymentStatus.CANCELLED) {
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            log.info("Payment {} already successful, ignoring duplicate webhook", payment.getId());
+            return;
+        }
+
+        if (payment.getStatus() == PaymentStatus.EXPIRED || 
+            payment.getStatus() == PaymentStatus.FAILED || 
+            payment.getStatus() == PaymentStatus.CANCELLED) {
             log.warn("Ignoring webhook for paymentId={} (status={})", payment.getId(), payment.getStatus());
             return;
         }
@@ -252,17 +266,18 @@ public class PaymentService {
         Order order = payment.getOrder();
         if (order != null) {
             if ("CANCELLED".equals(order.getStatus())) {
-                log.warn("Ignoring webhook for cancelled orderId={} (paymentId={})", order.getId(), payment.getId());
+                log.warn("Payment received for cancelled order. Marking as requires review. orderId={}", order.getId());
                 return;
             }
+            
+            orderService.confirmStockDeduction(order.getId());
             order.setStatus("PAID");
             orderRepository.save(order);
+            
+            log.info("Order {} marked as PAID, stock deducted", order.getId());
         }
     }
 
-    // =====================================================
-    // SIGNATURE VERIFICATION
-    // =====================================================
     private boolean verifySignature(String payload, String actualSignature) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
@@ -275,9 +290,14 @@ public class PaymentService {
             byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             String expectedSignature = HexFormat.of().formatHex(hash);
 
-            return expectedSignature.equals(actualSignature);
+            boolean valid = expectedSignature.equalsIgnoreCase(actualSignature);
+            if (!valid) {
+                log.warn("Signature mismatch. Expected: {}, Actual: {}", expectedSignature, actualSignature);
+            }
+            return valid;
 
         } catch (Exception e) {
+            log.error("Signature verification failed", e);
             throw new RuntimeException("Signature verification failed", e);
         }
     }
@@ -311,9 +331,6 @@ public class PaymentService {
         return extractJsonString(payload, "id");
     }
 
-    // =====================================================
-    // AUTH HELPERS (EXISTING CODE - UNCHANGED)
-    // =====================================================
     private User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
@@ -323,17 +340,18 @@ public class PaymentService {
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new ResponseStatusException(UNAUTHORIZED, "User not found"));
     }
+
     @Transactional(readOnly = true)
     public Payment getLatestPaymentForOrder(Long orderId) {
-    return paymentRepository
-            .findTopByOrderIdOrderByCreatedAtDesc(orderId)
-            .orElseThrow(() ->
-                    new ResponseStatusException(
-                            NOT_FOUND,
-                            "No payment found for order id " + orderId
-                    )
-            );
-  }
+        return paymentRepository
+                .findTopByOrderIdOrderByCreatedAtDesc(orderId)
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                NOT_FOUND,
+                                "No payment found for order id " + orderId
+                        )
+                );
+    }
 
     private boolean isTerminalOrder(String status) {
         if (status == null) {
@@ -341,24 +359,4 @@ public class PaymentService {
         }
         return "PAID".equals(status) || "DELIVERED".equals(status) || "CANCELLED".equals(status);
     }
-
-    private void restoreStock(Order order) {
-        List<OrderItem> items = order.getItems();
-        if (items == null || items.isEmpty()) {
-            return;
-        }
-        for (OrderItem item : items) {
-            Product product = item.getProduct();
-            if (product == null) {
-                continue;
-            }
-            Integer restoreQty = item.getQuantity();
-            if (restoreQty == null || restoreQty <= 0) {
-                continue;
-            }
-            product.setStockQuantity(product.getStockQuantity() + restoreQty);
-            productRepository.save(product);
-        }
-    }
-
 }

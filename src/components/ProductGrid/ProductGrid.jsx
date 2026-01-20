@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { productService } from "../../services/api";
 import { getProductPlaceholder } from "../../utils/imageUtils";
+import { saveScrollPosition, restoreScrollPosition, hasScrollPosition } from "../../utils/scrollRestore";
 import "../../assets/styles/homepage.css";
 import "../../assets/styles/product-grid.css";
 
@@ -77,16 +78,19 @@ const ProductGrid = ({
 
     if (category === "all") {
       setProducts(allProducts);
-      return;
+    } else {
+      const next = allProducts.filter((p) => {
+        const detected = detectCategory(p?.category);
+        if (!detected) return false;
+        return detected === category;
+      });
+      setProducts(next);
     }
 
-    const next = allProducts.filter((p) => {
-      const detected = detectCategory(p?.category);
-      if (!detected) return false;
-      return detected === category;
-    });
-    setProducts(next);
-  }, [category, allProducts]);
+    if (!loading && allProducts.length > 0 && hasScrollPosition()) {
+      restoreScrollPosition();
+    }
+  }, [category, allProducts, loading]);
 
   const handleCategoryChange = (nextCategory) => {
     setCategory(nextCategory);
@@ -96,13 +100,12 @@ const ProductGrid = ({
   };
 
   const goToProductDetail = (product, index) => {
-    // Use the actual database ID directly (products start from 31)
     const rawId = product?.id;
     const idNum = Number(rawId);
     const dbId = Number.isFinite(idNum) ? idNum : null;
     
     if (dbId) {
-      // Use the actual database ID in the route
+      saveScrollPosition();
       navigate(`/product/${dbId}`);
     } else {
       console.warn("Product ID is invalid, cannot navigate to product detail");

@@ -462,9 +462,14 @@
   
   .header-top {
     padding: 10px 5%;
+    border-bottom: none;
   }
 
-  .nav-links, .header-actions {
+  .header-actions {
+    display: none;
+  }
+
+  .nav-container {
     display: none;
   }
 

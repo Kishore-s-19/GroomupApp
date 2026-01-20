@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { authService } from '../services/api';
 
 const AuthContext = createContext();
@@ -7,6 +7,28 @@ const isValidJwt = (token) => {
   if (typeof token !== 'string') return false;
   const parts = token.split('.');
   return parts.length === 3 && parts.every(Boolean);
+};
+
+const isTokenExpired = (token) => {
+  if (!isValidJwt(token)) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp;
+    if (!exp) return false;
+    return Date.now() >= exp * 1000;
+  } catch {
+    return true;
+  }
+};
+
+const getTokenExpiry = (token) => {
+  if (!isValidJwt(token)) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp ? payload.exp * 1000 : null;
+  } catch {
+    return null;
+  }
 };
 
 export const useAuth = () => {
@@ -23,9 +45,10 @@ export const AuthProvider = ({ children }) => {
     if (storedUser) {
       try {
         const parsed = JSON.parse(storedUser);
-        if (isValidJwt(parsed?.token)) {
+        if (isValidJwt(parsed?.token) && !isTokenExpired(parsed?.token)) {
           return parsed;
         }
+        localStorage.removeItem('groomupUser');
       } catch {
         localStorage.removeItem('groomupUser');
       }
@@ -35,57 +58,118 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    // Session check is now handled in state initialization, 
-    // but we can keep the loading state for any future async checks if needed.
-    setLoading(false);
+  const clearAuth = useCallback(() => {
+    localStorage.removeItem('groomupUser');
+    localStorage.removeItem('groomupShoppingBag');
+    setUser(null);
   }, []);
+
+  useEffect(() => {
+    if (!user?.token) return;
+
+    if (isTokenExpired(user.token)) {
+      clearAuth();
+      return;
+    }
+
+    const expiry = getTokenExpiry(user.token);
+    if (expiry) {
+      const timeUntilExpiry = expiry - Date.now();
+      const bufferTime = 60000;
+      const timeout = Math.max(timeUntilExpiry - bufferTime, 0);
+      
+      const timer = setTimeout(() => {
+        clearAuth();
+        window.location.href = '/login?expired=true';
+      }, timeout);
+
+      return () => clearTimeout(timer);
+    }
+  }, [user?.token, clearAuth]);
 
   const login = async (credentials) => {
     try {
       setError(null);
-      const response = await authService.login(credentials);
+      setLoading(true);
+      
+      const sanitizedCredentials = {
+        email: credentials?.email?.trim().toLowerCase(),
+        password: credentials?.password
+      };
+      
+      const response = await authService.login(sanitizedCredentials);
       const token = response?.token;
+      
       if (!isValidJwt(token)) {
         throw new Error('Invalid login response');
       }
-      const userData = { token, email: credentials?.email };
+      
+      if (isTokenExpired(token)) {
+        throw new Error('Received expired token');
+      }
+      
+      const userData = { 
+        token, 
+        email: sanitizedCredentials.email,
+        loginTime: Date.now()
+      };
       localStorage.setItem('groomupUser', JSON.stringify(userData));
       setUser(userData);
       return { success: true, data: response };
     } catch (err) {
-      setError(err.message || 'Login failed');
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed';
+      setError(errorMessage);
       return { success: false, error: err };
+    } finally {
+      setLoading(false);
     }
   };
 
   const register = async (userData) => {
     try {
       setError(null);
-      const response = await authService.register(userData);
+      setLoading(true);
+      
+      const sanitizedData = {
+        email: userData?.email?.trim().toLowerCase(),
+        password: userData?.password,
+        name: userData?.name?.trim()
+      };
+      
+      const response = await authService.register(sanitizedData);
       const token = response?.token;
+      
       if (!isValidJwt(token)) {
         throw new Error('Invalid registration response');
       }
-      const storedUserData = { token, email: userData?.email, name: userData?.name };
+      
+      const storedUserData = { 
+        token, 
+        email: sanitizedData.email, 
+        name: sanitizedData.name,
+        loginTime: Date.now()
+      };
       localStorage.setItem('groomupUser', JSON.stringify(storedUserData));
       setUser(storedUserData);
       return { success: true, data: response };
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      const errorMessage = err.response?.data?.message || err.message || 'Registration failed';
+      setError(errorMessage);
       return { success: false, error: err };
+    } finally {
+      setLoading(false);
     }
   };
 
   const logout = async () => {
     try {
+      setLoading(true);
       await authService.logout();
     } catch (err) {
       console.error('Logout error:', err);
     } finally {
-      localStorage.removeItem('groomupUser');
-      localStorage.removeItem('groomupShoppingBag');
-      setUser(null);
+      clearAuth();
+      setLoading(false);
       window.location.href = '/login';
     }
   };
@@ -104,7 +188,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
-    isAuthenticated: isValidJwt(user?.token),
+    clearError: () => setError(null),
+    isAuthenticated: isValidJwt(user?.token) && !isTokenExpired(user?.token),
   };
 
   return (

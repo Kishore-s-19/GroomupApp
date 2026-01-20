@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { userService } from "../services/api";
 import "../assets/styles/profile.css";
 
@@ -7,6 +7,13 @@ const Profile = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'profile';
   const [activePage, setActivePage] = useState(initialTab);
+  const navigate = useNavigate();
+  const [isGuest, setIsGuest] = useState(false);
+
+  useEffect(() => {
+    const user = localStorage.getItem('groomupUser');
+    setIsGuest(!user);
+  }, []);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -31,6 +38,7 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (isGuest) return;
       try {
         const [profile, userAddresses, userOrders] = await Promise.all([
           userService.getProfile(),
@@ -40,7 +48,6 @@ const Profile = () => {
         
         setProfileData(profile);
         setAddresses(userAddresses);
-        // Normalize orders data to match backend format
         const normalizedOrders = Array.isArray(userOrders) 
           ? userOrders.map(order => ({
               ...order,
@@ -55,7 +62,7 @@ const Profile = () => {
     };
 
     fetchData();
-  }, []);
+  }, [isGuest]);
 
   const [newAddress, setNewAddress] = useState({
     name: "",
@@ -442,18 +449,24 @@ const Profile = () => {
               </a>
             </li>
             <li>
-              <a 
-                className={activePage === "wallet" ? "active" : ""}
-                onClick={() => setActivePage("wallet")}
-              >
-                <i className="fas fa-wallet"></i> GroomUp Wallet
-              </a>
-            </li>
-          </ul>
+          <a 
+                  className={activePage === "wallet" ? "active" : ""}
+                  onClick={() => setActivePage("wallet")}
+                >
+                  <i className="fas fa-wallet"></i> GroomUp Wallet
+                </a>
+              </li>
+            </ul>
 
-          <button className="logout-btn" onClick={() => setShowLogoutModal(true)}>
-            <i className="fas fa-sign-out-alt"></i> LOG OUT
-          </button>
+            {isGuest ? (
+              <button className="login-btn" onClick={() => navigate('/login')}>
+                <i className="fas fa-sign-in-alt"></i> LOG IN
+              </button>
+            ) : (
+              <button className="logout-btn" onClick={() => setShowLogoutModal(true)}>
+                <i className="fas fa-sign-out-alt"></i> LOG OUT
+              </button>
+            )}
         </aside>
 
         {renderProfileContent()}

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import { getOrderItemPlaceholder } from '../utils/imageUtils';
@@ -7,6 +7,7 @@ import '../assets/styles/shopping-bag.css'; // Your CSS file
 const ShoppingBag = () => {
   const navigate = useNavigate();
   const { cart, updateQuantity, removeFromCart, loading: cartLoading } = useCart();
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => sum + Number(item.price) * item.quantity, 0);
   }, [cart]);
@@ -25,8 +26,7 @@ const ShoppingBag = () => {
     
     const userData = JSON.parse(localStorage.getItem('groomupUser'));
     if (!userData) {
-      alert('Please sign in to proceed to checkout.');
-      navigate('/login');
+      setShowLoginModal(true);
       return;
     }
     
@@ -215,13 +215,35 @@ const ShoppingBag = () => {
             <p>HAPPY CUSTOMERS</p>
           </div>
         </div>
-      </section>
+        </section>
 
-      </div>
+        </div>
 
-     
-    </>
-  );
-};
+        {showLoginModal && (
+          <div className="login-modal-overlay" onClick={() => setShowLoginModal(false)}>
+            <div className="login-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="login-modal-icon">
+                <i className="fas fa-user-lock"></i>
+              </div>
+              <h2>Sign In Required</h2>
+              <p>Please sign in to your account to proceed to checkout.</p>
+              <div className="login-modal-actions">
+                <button className="login-modal-cancel" onClick={() => setShowLoginModal(false)}>
+                  Cancel
+                </button>
+                <button className="login-modal-confirm" onClick={() => navigate('/login')}>
+                  Sign In
+                </button>
+              </div>
+              <p className="login-modal-register">
+                Don't have an account? <Link to="/register" onClick={() => setShowLoginModal(false)}>Register</Link>
+              </p>
+            </div>
+          </div>
+        )}
+       
+      </>
+    );
+  };
 
 export default ShoppingBag

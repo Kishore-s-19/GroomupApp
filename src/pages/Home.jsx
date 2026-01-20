@@ -3,9 +3,9 @@ import { useParams } from "react-router-dom";
 
 import HeroSlider from "../components/HeroSlider/HeroSlider";
 import ProductGrid from "../components/ProductGrid/ProductGrid";
-import NewsletterPopup from "../components/NewsletterPopup/NewsletterPopup"; // Import the new component
+import NewsletterPopup from "../components/NewsletterPopup/NewsletterPopup";
+import { hasScrollPosition } from "../utils/scrollRestore";
 
-// Styles
 import "../assets/styles/homepage.css";
 
 const Home = () => {
@@ -16,10 +16,24 @@ const Home = () => {
     categoryParam ?? "all"
   );
   const [categoryChangeSource, setCategoryChangeSource] = useState(null);
+  const [isRestoring, setIsRestoring] = useState(hasScrollPosition());
 
   useEffect(() => {
     setSelectedCategory(categoryParam ?? "all");
   }, [categoryParam]);
+
+  useEffect(() => {
+    if (isRestoring) {
+      // Check every 50ms if restoration is complete (clears from storage)
+      const interval = setInterval(() => {
+        if (!hasScrollPosition()) {
+          setIsRestoring(false);
+          clearInterval(interval);
+        }
+      }, 50);
+      return () => clearInterval(interval);
+    }
+  }, [isRestoring]);
 
   const handleCategoryChange = (nextCategory, source = "filters") => {
     setCategoryChangeSource(source);
@@ -32,7 +46,7 @@ const Home = () => {
     if (email) {
       setSubscriberEmail(email);
       setShowPopup(true);
-      e.target.reset(); // Clear the form
+      e.target.reset();
     }
   };
 
@@ -42,20 +56,15 @@ const Home = () => {
 
   return (
     <>
-    <div className="home-page">
-      
-
-      {/* HERO SLIDER */}
+    <div className={`home-page ${isRestoring ? "restoring-scroll" : ""}`}>
       <HeroSlider onCategoryChange={(c) => handleCategoryChange(c, "hero")} />
 
-      {/* PRODUCTS / COLLECTIONS */}
       <ProductGrid
         selectedCategory={selectedCategory}
         onCategoryChange={(c) => handleCategoryChange(c, "filters")}
         categoryChangeSource={categoryChangeSource}
       />
 
-      {/* SERVICES SECTION */}
       <section className="services">
         <div className="services-container">
           <div className="service-item">
@@ -78,7 +87,6 @@ const Home = () => {
         </div>
       </section>
 
-      {/* NEWSLETTER */}
       <section className="newsletter">
         <h2>Get Coupons & Offers</h2>
         <p>
@@ -100,9 +108,6 @@ const Home = () => {
         </form>
       </section>
 
-     
-
-      {/* NEWSLETTER POPUP */}
       {showPopup && (
         <NewsletterPopup
           email={subscriberEmail}

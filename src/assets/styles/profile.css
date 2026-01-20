@@ -193,6 +193,27 @@ body {
   background-color: var(--background-light);
 }
 
+.login-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: white;
+  background: var(--primary-color);
+  text-decoration: none;
+  font-weight: 600;
+  padding: 12px 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  transition: background-color 0.3s;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+}
+
+.login-btn:hover {
+  background-color: var(--secondary-color);
+}
+
 /* ================= PROFILE CONTENT ================= */
 .profile-content {
   flex: 1;

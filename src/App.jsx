@@ -21,6 +21,12 @@ import OrderSuccess from "./pages/OrderSuccess";
 import OrderFailure from "./pages/OrderFailure";
 import Orders from "./pages/Orders";
 
+// Admin Pages
+import AdminLogin from "./admin/pages/AdminLogin";
+import AdminDashboard from "./admin/pages/AdminDashboard";
+import AdminProducts from "./admin/pages/AdminProducts";
+import AdminRoute from "./admin/components/AdminRoute";
+
 // Layouts
 import MainLayout from "./layouts/MainLayout";
 import AuthLayout from "./layouts/AuthLayout";
@@ -40,7 +46,13 @@ const App = () => {
           <RouteLoader>
             <Routes>
 
-              {/* 🔐 AUTH ROUTES (NO HEADER / FOOTER) */}
+              {/* ADMIN ROUTES (COMPLETELY SEPARATE) */}
+              <Route path="/admin/login" element={<AdminLogin />} />
+              <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+              <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+              <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+
+              {/* AUTH ROUTES (NO HEADER / FOOTER) */}
               <Route element={<AuthLayout />}>
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />

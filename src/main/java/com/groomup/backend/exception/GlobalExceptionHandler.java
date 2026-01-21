@@ -69,6 +69,27 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(org.springframework.transaction.TransactionSystemException.class)
+    public ResponseEntity<Map<String, String>> handleTransactionSystem(org.springframework.transaction.TransactionSystemException ex) {
+        logger.error("Transaction error: {}", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        Throwable cause = ex.getRootCause();
+        if (cause != null && cause.getMessage() != null && cause.getMessage().contains("OptimisticLock")) {
+            error.put("error", "Product was modified by another user. Please refresh and try again.");
+        } else {
+            error.put("error", "Database transaction failed. Please try again.");
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, String>> handleOptimisticLock(org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+        logger.warn("Optimistic locking failure: {}", ex.getMessage());
+        Map<String, String> error = new HashMap<>();
+        error.put("error", "Product was modified by another user. Please refresh and try again.");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<Map<String, String>> handleIllegalState(IllegalStateException ex) {
         logger.error("IllegalStateException: {}", ex.getMessage());

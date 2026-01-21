@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import RouteLoader from "./components/RouteLoader/RouteLoader";
+import SpeedInsightsComponent from "./components/SpeedInsights/SpeedInsights";
 
 // Contexts
 import { AuthProvider } from "./contexts/AuthContext";
@@ -76,7 +77,8 @@ const App = () => {
               </Route>
 
             </Routes>
-          </RouteLoader>  
+          </RouteLoader>
+          <SpeedInsightsComponent />
         </Router>
       </CartProvider>
     </AuthProvider>

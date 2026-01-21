@@ -4,16 +4,52 @@ import { userService } from "../services/api";
 import { isAdminAuthenticated } from "../admin/services/adminApi";
 import "../assets/styles/profile.css";
 
+const decodeJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch {
+    return null;
+  }
+};
+
+const isUserAdmin = () => {
+  try {
+    const userData = JSON.parse(localStorage.getItem('groomupUser') || 'null');
+    if (!userData?.token) return false;
+    
+    const payload = decodeJwt(userData.token);
+    if (!payload) return false;
+    
+    const roles = payload.roles || payload.role || payload.authorities || [];
+    const roleArray = Array.isArray(roles) ? roles : [roles];
+    return roleArray.some(r => 
+      r === 'ADMIN' || r === 'ROLE_ADMIN' || (r.authority && (r.authority === 'ROLE_ADMIN' || r.authority === 'ADMIN'))
+    );
+  } catch {
+    return false;
+  }
+};
+
 const Profile = () => {
   const [searchParams] = useSearchParams();
   const initialTab = searchParams.get('tab') || 'profile';
   const [activePage, setActivePage] = useState(initialTab);
   const navigate = useNavigate();
   const [isGuest, setIsGuest] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     const user = localStorage.getItem('groomupUser');
     setIsGuest(!user);
+    setIsAdmin(isUserAdmin() || isAdminAuthenticated());
   }, []);
 
   useEffect(() => {
@@ -457,13 +493,13 @@ const Profile = () => {
                     <i className="fas fa-wallet"></i> GroomUp Wallet
                   </a>
                 </li>
-                {isAdminAuthenticated() && (
-                  <li>
-                    <a onClick={() => navigate('/admin/dashboard')}>
-                      <i className="fas fa-cog"></i> Admin Dashboard
-                    </a>
-                  </li>
-                )}
+                {isAdmin && (
+                    <li>
+                      <a onClick={() => navigate('/admin/dashboard')}>
+                        <i className="fas fa-cog"></i> Admin Dashboard
+                      </a>
+                    </li>
+                  )}
               </ul>
 
             {isGuest ? (

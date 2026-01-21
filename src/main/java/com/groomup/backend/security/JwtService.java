@@ -2,6 +2,7 @@ package com.groomup.backend.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -89,8 +90,15 @@ public class JwtService {
             throw new IllegalStateException("JWT secret is not configured");
         }
 
-        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
-        logger.debug("JWT secret used as plain text (UTF-8)");
+        byte[] keyBytes;
+
+        try {
+            keyBytes = Decoders.BASE64.decode(secretKey);
+            logger.debug("JWT secret decoded as Base64");
+        } catch (IllegalArgumentException e) {
+            keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+            logger.debug("JWT secret used as plain text (UTF-8)");
+        }
 
         if (keyBytes.length < MIN_KEY_LENGTH_BYTES) {
             logger.error("JWT secret key is too short. Minimum {} bytes required, got {} bytes",

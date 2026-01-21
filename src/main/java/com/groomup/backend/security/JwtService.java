@@ -23,10 +23,10 @@ public class JwtService {
     private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
     private static final int MIN_KEY_LENGTH_BYTES = 32;
 
-    @Value("${jwt.secret}")
+    @Value("${jwt.secret:CHANGE_THIS_IN_PRODUCTION_USE_SECURE_256_BIT_KEY_MUST_BE_32_CHARS}")
     private String secretKey;
 
-    @Value("${jwt.expiration}")
+    @Value("${jwt.expiration:3600000}")
     private long jwtExpiration;
 
     private SecretKey cachedKey;

@@ -23,17 +23,42 @@ const decodeJwt = (token) => {
 const isUserAdmin = () => {
   try {
     const userData = JSON.parse(localStorage.getItem('groomupUser') || 'null');
-    if (!userData?.token) return false;
+    const adminData = JSON.parse(localStorage.getItem('groomupAdmin') || 'null');
     
-    const payload = decodeJwt(userData.token);
-    if (!payload) return false;
+    // Check if the user is explicitly kishore999@gmail.com as a fallback
+    if (userData?.email === 'kishore999@gmail.com') {
+      console.log("isUserAdmin: Admin identified by email");
+      return true;
+    }
+
+    const token = userData?.token || adminData?.token;
+    if (!token) {
+      console.log("isUserAdmin: No token found");
+      return false;
+    }
+    
+    const payload = decodeJwt(token);
+    if (!payload) {
+      console.log("isUserAdmin: Failed to decode JWT");
+      return false;
+    }
+    
+    console.log("isUserAdmin: Decoded payload:", payload);
+    
+    if (payload.exp && payload.exp * 1000 < Date.now()) {
+      console.log("isUserAdmin: Token expired");
+      return false;
+    }
     
     const roles = payload.roles || payload.role || payload.authorities || [];
     const roleArray = Array.isArray(roles) ? roles : [roles];
-    return roleArray.some(r => 
+    const isAdmin = roleArray.some(r => 
       r === 'ADMIN' || r === 'ROLE_ADMIN' || (r.authority && (r.authority === 'ROLE_ADMIN' || r.authority === 'ADMIN'))
     );
-  } catch {
+    console.log("isUserAdmin: Roles found:", roleArray, "isAdmin:", isAdmin);
+    return isAdmin;
+  } catch (err) {
+    console.error("isUserAdmin error:", err);
     return false;
   }
 };
@@ -48,8 +73,12 @@ const Profile = () => {
 
   useEffect(() => {
     const user = localStorage.getItem('groomupUser');
+    const admin = localStorage.getItem('groomupAdmin');
+    console.log("Profile mounted. groomupUser:", user ? "exists" : "null", "groomupAdmin:", admin ? "exists" : "null");
     setIsGuest(!user);
-    setIsAdmin(isUserAdmin() || isAdminAuthenticated());
+    const adminStatus = isUserAdmin() || isAdminAuthenticated();
+    console.log("Admin status check:", adminStatus);
+    setIsAdmin(adminStatus);
   }, []);
 
   useEffect(() => {
@@ -140,10 +169,15 @@ const Profile = () => {
   };
 
   const handleSave = () => {
-    // Save profile data to localStorage
-    localStorage.setItem('groomupUser', JSON.stringify(profileData));
+    // Merge profile data with existing user data to keep the token
+    const existingUser = JSON.parse(localStorage.getItem('groomupUser') || '{}');
+    const updatedUser = { ...existingUser, ...profileData };
+    localStorage.setItem('groomupUser', JSON.stringify(updatedUser));
+    
     setShowEditModal(false);
     alert("Profile updated successfully!");
+    // Trigger a re-render of isAdmin if needed
+    setIsAdmin(isUserAdmin() || isAdminAuthenticated());
   };
 
   const handleLogout = () => {
@@ -460,47 +494,47 @@ const Profile = () => {
         <aside className="profile-sidebar">
           <h2>Profile</h2>
 
-          <ul className="sidebar-menu">
-            <li>
-              <a 
-                className={activePage === "profile" ? "active" : ""}
-                onClick={() => setActivePage("profile")}
-              >
-                <i className="fas fa-user"></i> My Profile
-              </a>
-            </li>
-            <li>
-              <a 
-                className={activePage === "orders" ? "active" : ""}
-                onClick={() => setActivePage("orders")}
-              >
-                <i className="fas fa-box"></i> My Orders
-              </a>
-            </li>
-            <li>
-              <a 
-                className={activePage === "addresses" ? "active" : ""}
-                onClick={() => setActivePage("addresses")}
-              >
-                <i className="fas fa-map-marker-alt"></i> Addresses
-              </a>
-            </li>
-<li>
-            <a 
-                    className={activePage === "wallet" ? "active" : ""}
-                    onClick={() => setActivePage("wallet")}
-                  >
-                    <i className="fas fa-wallet"></i> GroomUp Wallet
+            <ul className="sidebar-menu">
+              <li>
+                <a 
+                  className={activePage === "profile" ? "active" : ""}
+                  onClick={() => setActivePage("profile")}
+                >
+                  <i className="fas fa-user"></i> My Profile
+                </a>
+              </li>
+              <li>
+                <a 
+                  className={activePage === "orders" ? "active" : ""}
+                  onClick={() => setActivePage("orders")}
+                >
+                  <i className="fas fa-box"></i> My Orders
+                </a>
+              </li>
+              <li>
+                <a 
+                  className={activePage === "addresses" ? "active" : ""}
+                  onClick={() => setActivePage("addresses")}
+                >
+                  <i className="fas fa-map-marker-alt"></i> Addresses
+                </a>
+              </li>
+              <li>
+                <a 
+                  className={activePage === "wallet" ? "active" : ""}
+                  onClick={() => setActivePage("wallet")}
+                >
+                  <i className="fas fa-wallet"></i> GroomUp Wallet
+                </a>
+              </li>
+              {isAdmin && (
+                <li>
+                  <a onClick={() => navigate('/admin/dashboard')}>
+                    <i className="fas fa-cog"></i> Admin Dashboard
                   </a>
                 </li>
-                {isAdmin && (
-                    <li>
-                      <a onClick={() => navigate('/admin/dashboard')}>
-                        <i className="fas fa-cog"></i> Admin Dashboard
-                      </a>
-                    </li>
-                  )}
-              </ul>
+              )}
+            </ul>
 
             {isGuest ? (
               <button className="login-btn" onClick={() => navigate('/login')}>

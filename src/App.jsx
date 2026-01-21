@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import RouteLoader from "./components/RouteLoader/RouteLoader";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Contexts
 import { AuthProvider } from "./contexts/AuthContext";
@@ -43,6 +44,7 @@ const App = () => {
     <AuthProvider>
       <CartProvider>
         <Router>
+          <SpeedInsights />
           <RouteLoader>
             <Routes>
 

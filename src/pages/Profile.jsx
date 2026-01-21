@@ -21,17 +21,19 @@ const decodeJwt = (token) => {
 };
 
 const isUserAdmin = () => {
-  try {
-    const userData = JSON.parse(localStorage.getItem('groomupUser') || 'null');
-    const adminData = JSON.parse(localStorage.getItem('groomupAdmin') || 'null');
-    
-    // Check if the user is explicitly kishore999@gmail.com as a fallback
-    if (userData?.email === 'kishore999@gmail.com') {
-      console.log("isUserAdmin: Admin identified by email");
-      return true;
-    }
+    try {
+      const userData = JSON.parse(localStorage.getItem('groomupUser') || 'null');
+      const adminData = JSON.parse(localStorage.getItem('groomupAdmin') || 'null');
+      
+      // Check if the user is explicitly kishore999@gmail.com as a fallback
+      // Make it case-insensitive and more robust
+      const email = userData?.email?.toLowerCase() || "";
+      if (email === 'kishore999@gmail.com') {
+        console.log("isUserAdmin: Admin identified by email:", email);
+        return true;
+      }
 
-    const token = userData?.token || adminData?.token;
+      const token = userData?.token || adminData?.token;
     if (!token) {
       console.log("isUserAdmin: No token found");
       return false;
@@ -72,12 +74,18 @@ const Profile = () => {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    const user = localStorage.getItem('groomupUser');
+    const userStr = localStorage.getItem('groomupUser');
+    const user = JSON.parse(userStr || 'null');
     const admin = localStorage.getItem('groomupAdmin');
+    
     console.log("Profile mounted. groomupUser:", user ? "exists" : "null", "groomupAdmin:", admin ? "exists" : "null");
     setIsGuest(!user);
-    const adminStatus = isUserAdmin() || isAdminAuthenticated();
-    console.log("Admin status check:", adminStatus);
+    
+    // Direct check for kishore999@gmail.com
+    const isKishore = user?.email?.toLowerCase() === 'kishore999@gmail.com';
+    const adminStatus = isKishore || isUserAdmin() || isAdminAuthenticated();
+    
+    console.log("Admin status check:", { isKishore, adminStatus });
     setIsAdmin(adminStatus);
   }, []);
 
@@ -527,13 +535,22 @@ const Profile = () => {
                   <i className="fas fa-wallet"></i> GroomUp Wallet
                 </a>
               </li>
-              {isAdmin && (
-                <li>
-                  <a onClick={() => navigate('/admin/dashboard')}>
-                    <i className="fas fa-cog"></i> Admin Dashboard
-                  </a>
-                </li>
-              )}
+                {isAdmin && (
+                  <li>
+                    <a 
+                      onClick={() => navigate('/admin/dashboard')}
+                      style={{ 
+                        color: '#c12657', 
+                        fontWeight: 'bold',
+                        borderLeft: '4px solid #c12657',
+                        backgroundColor: '#fff5f8',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <i className="fas fa-user-shield"></i> Admin Dashboard
+                    </a>
+                  </li>
+                )}
             </ul>
 
             {isGuest ? (

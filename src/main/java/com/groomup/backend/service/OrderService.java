@@ -150,12 +150,14 @@ public class OrderService {
         log.info("Reserved stock released for order: {}", orderId);
     }
 
+    @Transactional(readOnly = true)
     public List<OrderResponse> getMyOrders() {
         User user = getCurrentUser();
         List<Order> orders = orderRepository.findByUserOrderByCreatedAtDesc(user);
         return orders.stream().map(this::toOrderResponse).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public OrderResponse getOrderById(Long id) {
         User user = getCurrentUser();
         Order order = orderRepository.findById(id)

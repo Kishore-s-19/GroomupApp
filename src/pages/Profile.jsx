@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { userService } from "../services/api";
+import { isAdminAuthenticated } from "../admin/services/adminApi";
 import "../assets/styles/profile.css";
 
 const Profile = () => {
@@ -448,15 +449,22 @@ const Profile = () => {
                 <i className="fas fa-map-marker-alt"></i> Addresses
               </a>
             </li>
-            <li>
-          <a 
-                  className={activePage === "wallet" ? "active" : ""}
-                  onClick={() => setActivePage("wallet")}
-                >
-                  <i className="fas fa-wallet"></i> GroomUp Wallet
-                </a>
-              </li>
-            </ul>
+<li>
+            <a 
+                    className={activePage === "wallet" ? "active" : ""}
+                    onClick={() => setActivePage("wallet")}
+                  >
+                    <i className="fas fa-wallet"></i> GroomUp Wallet
+                  </a>
+                </li>
+                {isAdminAuthenticated() && (
+                  <li>
+                    <a onClick={() => navigate('/admin/dashboard')}>
+                      <i className="fas fa-cog"></i> Admin Dashboard
+                    </a>
+                  </li>
+                )}
+              </ul>
 
             {isGuest ? (
               <button className="login-btn" onClick={() => navigate('/login')}>

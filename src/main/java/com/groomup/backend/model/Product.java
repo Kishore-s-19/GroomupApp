@@ -41,13 +41,13 @@ public class Product {
     private String category;
 
     @Column(nullable = false)
-    private int stockQuantity;
+    private Integer stockQuantity = 0;
 
     @Column
     private Integer stock;
 
     @Column(nullable = false)
-    private int reservedQuantity = 0;
+    private Integer reservedQuantity = 0;
 
     @Column
     private String brand;
@@ -83,7 +83,7 @@ public class Product {
     private Integer sourceId;
 
     @Column(nullable = false)
-    private boolean active = true;
+    private Boolean active = true;
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
@@ -145,24 +145,24 @@ public class Product {
         this.category = category;
     }
 
-    public int getStockQuantity() {
-        return stockQuantity;
+    public Integer getStockQuantity() {
+        return stockQuantity != null ? stockQuantity : 0;
     }
 
-    public void setStockQuantity(int stockQuantity) {
-        this.stockQuantity = stockQuantity;
+    public void setStockQuantity(Integer stockQuantity) {
+        this.stockQuantity = stockQuantity != null ? stockQuantity : 0;
     }
 
-    public int getReservedQuantity() {
-        return reservedQuantity;
+    public Integer getReservedQuantity() {
+        return reservedQuantity != null ? reservedQuantity : 0;
     }
 
-    public void setReservedQuantity(int reservedQuantity) {
-        this.reservedQuantity = reservedQuantity;
+    public void setReservedQuantity(Integer reservedQuantity) {
+        this.reservedQuantity = reservedQuantity != null ? reservedQuantity : 0;
     }
 
     public int getAvailableQuantity() {
-        return stockQuantity - reservedQuantity;
+        return getStockQuantity() - getReservedQuantity();
     }
 
     public BigDecimal getOriginalPrice() {
@@ -277,12 +277,12 @@ public class Product {
         this.sourceId = sourceId;
     }
 
-    public boolean isActive() {
-        return active;
+    public Boolean isActive() {
+        return active != null ? active : true;
     }
 
-    public void setActive(boolean active) {
-        this.active = active;
+    public void setActive(Boolean active) {
+        this.active = active != null ? active : true;
     }
 
     public Long getVersion() {

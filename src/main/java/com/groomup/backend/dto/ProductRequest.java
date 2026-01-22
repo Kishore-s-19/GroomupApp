@@ -9,7 +9,7 @@ public class ProductRequest {
     private BigDecimal originalPrice;
     private String imageUrl;
     private String category;
-    private int stockQuantity;
+    private Integer stockQuantity;
     private Integer stock;
     private String brand;
     private String careGuide;
@@ -72,11 +72,11 @@ public class ProductRequest {
         this.category = category;
     }
 
-    public int getStockQuantity() {
+    public Integer getStockQuantity() {
         return stockQuantity;
     }
 
-    public void setStockQuantity(int stockQuantity) {
+    public void setStockQuantity(Integer stockQuantity) {
         this.stockQuantity = stockQuantity;
     }
 

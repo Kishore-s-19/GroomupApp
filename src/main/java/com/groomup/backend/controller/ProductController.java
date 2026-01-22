@@ -3,7 +3,7 @@ package com.groomup.backend.controller;
 import com.groomup.backend.dto.ProductRequest;
 import com.groomup.backend.model.Product;
 import com.groomup.backend.repository.ProductRepository;
-import org.springframework.transaction.annotation.Transactional;
+import com.groomup.backend.service.ProductService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -17,9 +17,11 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ProductController {
 
     private final ProductRepository productRepository;
+    private final ProductService productService;
 
-    public ProductController(ProductRepository productRepository) {
+    public ProductController(ProductRepository productRepository, ProductService productService) {
         this.productRepository = productRepository;
+        this.productService = productService;
     }
 
     @GetMapping
@@ -41,12 +43,8 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    @Transactional
     public Product updateProduct(@PathVariable Long id, @RequestBody ProductRequest request) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
-        applyProductRequest(product, request);
-        return productRepository.saveAndFlush(product);
+        return productService.updateProduct(id, request);
     }
 
     @DeleteMapping("/{id}")

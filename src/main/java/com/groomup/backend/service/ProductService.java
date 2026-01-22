@@ -1,5 +1,59 @@
 package com.groomup.backend.service;
 
+import com.groomup.backend.dto.ProductRequest;
+import com.groomup.backend.model.Product;
+import com.groomup.backend.repository.ProductRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
+
+@Service
 public class ProductService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductService.class);
+
+    private final ProductRepository productRepository;
+
+    public ProductService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
+
+    @Transactional
+    @Retryable(
+        retryFor = ObjectOptimisticLockingFailureException.class,
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 100)
+    )
+    public Product updateProduct(Long id, ProductRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
+        
+        applyProductRequest(product, request);
+        Product saved = productRepository.saveAndFlush(product);
+        log.info("Product updated: {}", id);
+        return saved;
+    }
+
+    private void applyProductRequest(Product product, ProductRequest request) {
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Name is required");
+        }
+        if (request.getPrice() == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Price is required");
+        }
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setImageUrl(request.getImageUrl());
+        product.setCategory(request.getCategory());
+        product.setStockQuantity(request.getStockQuantity());
+    }
 }

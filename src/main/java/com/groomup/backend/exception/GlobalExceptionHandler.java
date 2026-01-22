@@ -71,15 +71,24 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(org.springframework.transaction.TransactionSystemException.class)
     public ResponseEntity<Map<String, String>> handleTransactionSystem(org.springframework.transaction.TransactionSystemException ex) {
-        logger.error("Transaction error: {}", ex.getMessage());
+        logger.error("Transaction error: {}", ex.getMessage(), ex);
         Map<String, String> error = new HashMap<>();
+        
         Throwable cause = ex.getRootCause();
-        if (cause != null && cause.getMessage() != null && cause.getMessage().contains("OptimisticLock")) {
-            error.put("error", "Product was modified by another user. Please refresh and try again.");
-        } else {
-            error.put("error", "Database transaction failed. Please try again.");
+        if (cause != null) {
+            String msg = cause.getMessage();
+            if (msg != null && (msg.contains("OptimisticLock") || msg.contains("version"))) {
+                error.put("error", "The product was updated by another process. Please refresh and try again.");
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+            }
+            if (msg != null && msg.contains("Data truncation")) {
+                error.put("error", "One of the fields is too long. Please shorten the text.");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            }
         }
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        
+        error.put("error", "Database error: Could not save changes. Please check your input.");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
     @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)

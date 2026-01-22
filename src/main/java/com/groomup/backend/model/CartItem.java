@@ -28,6 +28,16 @@ public class CartItem {
 
     public CartItem() {}
 
+    @PostLoad
+    protected void repairLegacyData() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
+    }
+
     public CartItem(Cart cart, Product product, int quantity) {
         this.cart = cart;
         this.product = product;

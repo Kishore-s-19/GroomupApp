@@ -41,6 +41,16 @@ public class User implements UserDetails {
 
     public User() {}
 
+    @PostLoad
+    protected void repairLegacyData() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
+    }
+
     // ======================
     // UserDetails METHODS
     // ======================

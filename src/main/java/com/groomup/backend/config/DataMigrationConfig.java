@@ -29,8 +29,20 @@ public class DataMigrationConfig {
                 );
                 log.info("Fixed {} products with NULL timestamps", productTimestampsFixed);
 
-                // Fix other tables if needed
-                jdbcTemplate.update("UPDATE orders SET created_at = NOW(), updated_at = NOW() WHERE created_at IS NULL");
+                // Fix NULL timestamps in all tables
+                String[] tables = {"products", "orders", "order_items", "users", "payments", "carts", "cart_items"};
+                for (String table : tables) {
+                    try {
+                        int fixed = jdbcTemplate.update(
+                            "UPDATE " + table + " SET created_at = NOW(), updated_at = NOW() WHERE created_at IS NULL"
+                        );
+                        if (fixed > 0) {
+                            log.info("Fixed {} records with NULL timestamps in table: {}", fixed, table);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not migrate table {}: {}", table, e.getMessage());
+                    }
+                }
 
                 log.info("Legacy data migration completed successfully.");
             } catch (Exception e) {

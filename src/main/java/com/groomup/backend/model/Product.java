@@ -306,6 +306,10 @@ public class Product {
 
     @PreUpdate
     protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+        this.updatedAt = now;
+        if (this.createdAt == null) {
+            this.createdAt = now;
+        }
     }
 }

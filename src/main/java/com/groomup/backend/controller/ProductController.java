@@ -54,19 +54,4 @@ public class ProductController {
         }
         productRepository.deleteById(id);
     }
-
-    private void applyProductRequest(Product product, ProductRequest request) {
-        if (request.getName() == null || request.getName().isBlank()) {
-            throw new ResponseStatusException(BAD_REQUEST, "Name is required");
-        }
-        if (request.getPrice() == null) {
-            throw new ResponseStatusException(BAD_REQUEST, "Price is required");
-        }
-        product.setName(request.getName());
-        product.setDescription(request.getDescription());
-        product.setPrice(request.getPrice());
-        product.setImageUrl(request.getImageUrl());
-        product.setCategory(request.getCategory());
-        product.setStockQuantity(request.getStockQuantity());
-    }
 }

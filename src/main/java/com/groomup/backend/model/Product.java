@@ -114,6 +114,9 @@ public class Product {
         if (this.active == null) {
             this.active = true;
         }
+        if (this.version == null) {
+            this.version = 0L;
+        }
     }
 
     public Long getId() {
@@ -308,6 +311,10 @@ public class Product {
         return version;
     }
 
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
     public LocalDateTime getCreatedAt() {
         return createdAt;
     }
@@ -321,6 +328,9 @@ public class Product {
         LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
+        if (this.version == null) {
+            this.version = 0L;
+        }
     }
 
     @PreUpdate
@@ -329,6 +339,9 @@ public class Product {
         this.updatedAt = now;
         if (this.createdAt == null) {
             this.createdAt = now;
+        }
+        if (this.version == null) {
+            this.version = 0L;
         }
     }
 }

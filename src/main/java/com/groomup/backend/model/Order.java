@@ -51,6 +51,9 @@ public class Order {
         if (this.updatedAt == null) {
             this.updatedAt = this.createdAt;
         }
+        if (this.status == null) {
+            this.status = "PENDING";
+        }
     }
 
     public void addItem(OrderItem item) {

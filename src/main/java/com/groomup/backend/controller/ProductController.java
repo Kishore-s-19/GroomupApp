@@ -38,7 +38,7 @@ public class ProductController {
     @PostMapping
     public Product createProduct(@RequestBody ProductRequest request) {
         Product product = new Product();
-        applyProductRequest(product, request);
+        productService.applyProductRequest(product, request);
         return productRepository.save(product);
     }
 

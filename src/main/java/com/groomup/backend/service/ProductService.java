@@ -47,7 +47,7 @@ public class ProductService {
         return saved;
     }
 
-    private void applyProductRequest(Product product, ProductRequest request) {
+    public void applyProductRequest(Product product, ProductRequest request) {
         if (request.getName() == null || request.getName().isBlank()) {
             throw new ResponseStatusException(BAD_REQUEST, "Name is required");
         }
@@ -57,8 +57,29 @@ public class ProductService {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setPrice(request.getPrice());
+        product.setOriginalPrice(request.getOriginalPrice());
         product.setImageUrl(request.getImageUrl());
         product.setCategory(request.getCategory());
         product.setStockQuantity(request.getStockQuantity());
+        
+        // Map stock if provided, otherwise sync with stockQuantity
+        if (request.getStock() != null) {
+            product.setStock(request.getStock());
+        } else if (product.getStock() == null) {
+            product.setStock(request.getStockQuantity());
+        }
+        
+        if (request.getBrand() != null) product.setBrand(request.getBrand());
+        if (request.getCareGuide() != null) product.setCareGuide(request.getCareGuide());
+        if (request.getColorsJson() != null) product.setColorsJson(request.getColorsJson());
+        if (request.getDeliveryInfo() != null) product.setDeliveryInfo(request.getDeliveryInfo());
+        if (request.getFitJson() != null) product.setFitJson(request.getFitJson());
+        if (request.getFitNote() != null) product.setFitNote(request.getFitNote());
+        if (request.getMaterials() != null) product.setMaterials(request.getMaterials());
+        if (request.getRating() != null) product.setRating(request.getRating());
+        if (request.getReviewsCount() != null) product.setReviewsCount(request.getReviewsCount());
+        if (request.getSizesJson() != null) product.setSizesJson(request.getSizesJson());
+        if (request.getSourceId() != null) product.setSourceId(request.getSourceId());
+        if (request.getActive() != null) product.setActive(request.getActive());
     }
 }

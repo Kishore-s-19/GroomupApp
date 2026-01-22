@@ -26,19 +26,24 @@ public class ProductService {
         this.productRepository = productRepository;
     }
 
-    @Transactional
     @Retryable(
-        retryFor = ObjectOptimisticLockingFailureException.class,
+        retryFor = {ObjectOptimisticLockingFailureException.class, org.springframework.transaction.TransactionSystemException.class},
         maxAttempts = 3,
-        backoff = @Backoff(delay = 100)
+        backoff = @Backoff(delay = 100, multiplier = 2)
     )
     public Product updateProduct(Long id, ProductRequest request) {
+        log.info("Attempting to update product: {}", id);
+        return performUpdate(id, request);
+    }
+
+    @Transactional
+    public Product performUpdate(Long id, ProductRequest request) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
         
         applyProductRequest(product, request);
         Product saved = productRepository.saveAndFlush(product);
-        log.info("Product updated: {}", id);
+        log.info("Product updated and flushed: {}", id);
         return saved;
     }
 

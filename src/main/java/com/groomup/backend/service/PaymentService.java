@@ -141,7 +141,6 @@ public class PaymentService {
     }
 
     @Scheduled(fixedDelay = 15000)
-    @Transactional
     public void expirePendingPayments() {
         LocalDateTime now = LocalDateTime.now();
         List<Payment> expiredPending = paymentRepository.findByStatusAndExpiresAtBefore(PaymentStatus.PENDING, now);
@@ -152,53 +151,59 @@ public class PaymentService {
         log.info("Expiring {} pending payment(s) (now={})", expiredPending.size(), now);
 
         for (Payment payment : expiredPending) {
-            if (payment == null || payment.getId() == null) {
-                continue;
+            try {
+                processSinglePaymentExpiry(payment.getId());
+            } catch (Exception e) {
+                log.error("Failed to expire payment {}: {}", payment.getId(), e.getMessage());
             }
-            Payment fresh = paymentRepository.findById(payment.getId()).orElse(null);
-            if (fresh == null || fresh.getStatus() != PaymentStatus.PENDING) {
-                continue;
-            }
-
-            Order order = fresh.getOrder();
-            if (order == null || order.getId() == null) {
-                fresh.setStatus(PaymentStatus.EXPIRED);
-                if (fresh.getFailureReason() == null || fresh.getFailureReason().isBlank()) {
-                    fresh.setFailureReason("Expired");
-                }
-                paymentRepository.save(fresh);
-                continue;
-            }
-
-            Payment latest = paymentRepository.findTopByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null);
-            if (latest == null || latest.getId() == null || !latest.getId().equals(fresh.getId())) {
-                fresh.setStatus(PaymentStatus.EXPIRED);
-                if (fresh.getFailureReason() == null || fresh.getFailureReason().isBlank()) {
-                    fresh.setFailureReason("Expired");
-                }
-                paymentRepository.save(fresh);
-                continue;
-            }
-
-            if (isTerminalOrder(order.getStatus())) {
-                fresh.setStatus(PaymentStatus.EXPIRED);
-                if (fresh.getFailureReason() == null || fresh.getFailureReason().isBlank()) {
-                    fresh.setFailureReason("Expired");
-                }
-                paymentRepository.save(fresh);
-                continue;
-            }
-
-            orderService.releaseReservedStock(order.getId());
-            order.setStatus("CANCELLED");
-            orderRepository.save(order);
-
-            fresh.setStatus(PaymentStatus.EXPIRED);
-            fresh.setFailureReason("Expired - no payment captured within 2 minutes");
-            paymentRepository.save(fresh);
-
-            log.info("Auto-cancelled orderId={} due to payment expiry (paymentId={})", order.getId(), fresh.getId());
         }
+    }
+
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void processSinglePaymentExpiry(Long paymentId) {
+        Payment fresh = paymentRepository.findById(paymentId).orElse(null);
+        if (fresh == null || fresh.getStatus() != PaymentStatus.PENDING) {
+            return;
+        }
+
+        Order order = fresh.getOrder();
+        if (order == null || order.getId() == null) {
+            fresh.setStatus(PaymentStatus.EXPIRED);
+            if (fresh.getFailureReason() == null || fresh.getFailureReason().isBlank()) {
+                fresh.setFailureReason("Expired");
+            }
+            paymentRepository.save(fresh);
+            return;
+        }
+
+        Payment latest = paymentRepository.findTopByOrderIdOrderByCreatedAtDesc(order.getId()).orElse(null);
+        if (latest == null || latest.getId() == null || !latest.getId().equals(fresh.getId())) {
+            fresh.setStatus(PaymentStatus.EXPIRED);
+            if (fresh.getFailureReason() == null || fresh.getFailureReason().isBlank()) {
+                fresh.setFailureReason("Expired");
+            }
+            paymentRepository.save(fresh);
+            return;
+        }
+
+        if (isTerminalOrder(order.getStatus())) {
+            fresh.setStatus(PaymentStatus.EXPIRED);
+            if (fresh.getFailureReason() == null || fresh.getFailureReason().isBlank()) {
+                fresh.setFailureReason("Expired");
+            }
+            paymentRepository.save(fresh);
+            return;
+        }
+
+        orderService.releaseReservedStock(order.getId());
+        order.setStatus("CANCELLED");
+        orderRepository.save(order);
+
+        fresh.setStatus(PaymentStatus.EXPIRED);
+        fresh.setFailureReason("Expired - no payment captured within 2 minutes");
+        paymentRepository.save(fresh);
+
+        log.info("Auto-cancelled orderId={} due to payment expiry (paymentId={})", order.getId(), fresh.getId());
     }
 
     @Transactional

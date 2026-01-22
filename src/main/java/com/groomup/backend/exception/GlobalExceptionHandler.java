@@ -6,6 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.transaction.TransactionSystemException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -61,29 +64,35 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
     }
 
-    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
-    public ResponseEntity<Map<String, String>> handleDataIntegrity(org.springframework.dao.DataIntegrityViolationException ex) {
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, String>> handleDataIntegrity(DataIntegrityViolationException ex) {
         logger.error("Data integrity violation: {}", ex.getMessage());
         Map<String, String> error = new HashMap<>();
         error.put("error", "Database error: Please ensure all fields are valid and not too long.");
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
-    @ExceptionHandler(org.springframework.transaction.TransactionSystemException.class)
-    public ResponseEntity<Map<String, String>> handleTransactionSystem(org.springframework.transaction.TransactionSystemException ex) {
-        logger.error("Transaction error: {}", ex.getMessage(), ex);
+    @ExceptionHandler(TransactionSystemException.class)
+    public ResponseEntity<Map<String, String>> handleTransactionSystem(TransactionSystemException ex) {
+        Throwable cause = ex.getRootCause();
+        logger.error("Transaction error: {} (Root cause: {})", ex.getMessage(), cause != null ? cause.getMessage() : "unknown", ex);
         Map<String, String> error = new HashMap<>();
         
-        Throwable cause = ex.getRootCause();
         if (cause != null) {
             String msg = cause.getMessage();
-            if (msg != null && (msg.contains("OptimisticLock") || msg.contains("version"))) {
-                error.put("error", "The product was updated by another process. Please refresh and try again.");
-                return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
-            }
-            if (msg != null && msg.contains("Data truncation")) {
-                error.put("error", "One of the fields is too long. Please shorten the text.");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+            if (msg != null) {
+                if (msg.contains("OptimisticLock") || msg.contains("version") || msg.contains("stale")) {
+                    error.put("error", "The product was updated by another process. Please refresh and try again.");
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+                }
+                if (msg.contains("Data truncation") || msg.contains("too long") || msg.contains("DataTooLong")) {
+                    error.put("error", "One of the fields is too long. Please shorten the text.");
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+                }
+                if (msg.contains("Lock wait timeout") || msg.contains("Deadlock")) {
+                    error.put("error", "Database is busy. Please try again in a moment.");
+                    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
+                }
             }
         }
         
@@ -91,8 +100,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
     }
 
-    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
-    public ResponseEntity<Map<String, String>> handleOptimisticLock(org.springframework.orm.ObjectOptimisticLockingFailureException ex) {
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, String>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
         logger.warn("Optimistic locking failure: {}", ex.getMessage());
         Map<String, String> error = new HashMap<>();
         error.put("error", "Product was modified by another user. Please refresh and try again.");

@@ -85,10 +85,10 @@ public class Product {
     @Column(nullable = false)
     private Boolean active = true;
 
-    @Column
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     @Version

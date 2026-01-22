@@ -8,17 +8,17 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "payments",
-        indexes = {
-                @Index(name = "idx_payments_order_id", columnList = "order_id"),
-                @Index(name = "idx_payments_status", columnList = "status"),
-                @Index(name = "idx_payments_gateway_order_id", columnList = "gatewayOrderId"),
-                @Index(name = "idx_payments_gateway_payment_id", columnList = "gatewayPaymentId")
-        },
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_payments_gateway_order_id", columnNames = "gatewayOrderId"),
-                @UniqueConstraint(name = "uk_payments_gateway_payment_id", columnNames = "gatewayPaymentId"),
-                @UniqueConstraint(name = "uk_payments_order_attempt", columnNames = {"order_id", "attemptNumber"})
-        }
+    indexes = {
+            @Index(name = "idx_payments_order_id", columnList = "order_id"),
+            @Index(name = "idx_payments_status", columnList = "status"),
+            @Index(name = "idx_payments_gateway_order_id", columnList = "gateway_order_id"),
+            @Index(name = "idx_payments_gateway_payment_id", columnList = "gateway_payment_id")
+    },
+    uniqueConstraints = {
+            @UniqueConstraint(name = "uk_payments_gateway_order_id", columnNames = "gateway_order_id"),
+            @UniqueConstraint(name = "uk_payments_gateway_payment_id", columnNames = "gateway_payment_id"),
+            @UniqueConstraint(name = "uk_payments_order_attempt", columnNames = {"order_id", "attempt_number"})
+    }
 )
 public class Payment {
 
@@ -43,27 +43,28 @@ public class Payment {
     @Column(nullable = false, length = 8)
     private String currency;
 
-    @Column(length = 64)
+    @Column(name = "gateway_order_id", length = 64)
     private String gatewayOrderId;
 
-    @Column(length = 64)
+    @Column(name = "gateway_payment_id", length = 64)
     private String gatewayPaymentId;
 
-    @Column(length = 256)
+    @Column(name = "gateway_signature", length = 256)
     private String gatewaySignature;
 
-    @Column(nullable = false)
+    @Column(name = "attempt_number", nullable = false)
     private Integer attemptNumber;
 
-    @Column(length = 512)
+    @Column(name = "failure_reason", length = 512)
     private String failureReason;
 
+    @Column(name = "expires_at")
     private LocalDateTime expiresAt;
 
-    @Column(nullable = false)
+    @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
     public Payment() {

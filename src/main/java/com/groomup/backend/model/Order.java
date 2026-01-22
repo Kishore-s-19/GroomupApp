@@ -34,10 +34,10 @@ public class Order {
     @Column(nullable = false, length = 1024)
     private String shippingAddress;
 
-    @Column
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    @Column
+    @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
     public Order() {

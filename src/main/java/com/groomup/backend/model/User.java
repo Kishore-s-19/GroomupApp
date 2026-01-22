@@ -33,10 +33,10 @@ public class User implements UserDetails {
     @Column(nullable = false)
     private String role = "USER";
 
-    @Column(nullable = true)
+    @Column(name = "created_at", nullable = true)
     private LocalDateTime createdAt;
 
-    @Column(nullable = true)
+    @Column(name = "updated_at", nullable = true)
     private LocalDateTime updatedAt;
 
     public User() {}

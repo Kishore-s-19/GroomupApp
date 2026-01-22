@@ -235,13 +235,20 @@ const ProductDetail = () => {
         <div className="product-info">
           <div className="brand-name">{safeProduct.brand}</div>
           <h1 className="product-title">{safeProduct.name}</h1>
-          <div className="product-price">
-            <span className="current-price">Rs. {Number(safeProduct.price).toLocaleString()}.00</span>
-            {safeProduct.originalPrice && (
-              <span className="original-price">Rs. {Number(safeProduct.originalPrice).toLocaleString()}.00</span>
+            <div className="product-price">
+              <span className="current-price">Rs. {Number(safeProduct.price).toLocaleString()}.00</span>
+              {safeProduct.originalPrice && (
+                <span className="original-price">Rs. {Number(safeProduct.originalPrice).toLocaleString()}.00</span>
+              )}
+            </div>
+            <p className="mrp-text">MRP Inclusive of all taxes</p>
+
+            {safeProduct.stockQuantity <= 0 && (
+              <div className="out-of-stock-notice">
+                <i className="fas fa-exclamation-circle"></i>
+                Currently Out of Stock
+              </div>
             )}
-          </div>
-          <p className="mrp-text">MRP Inclusive of all taxes</p>
 
           {/* Only show color selection for non-serum products */}
           {!isSerum && safeProduct.colors && safeProduct.colors.length > 0 && (
@@ -289,9 +296,13 @@ const ProductDetail = () => {
             </div>
           </div>
 
-          <button className="add-to-cart-btn" onClick={handleAddToCart}>
-            ADD TO BAG
-          </button>
+            <button 
+              className={`add-to-cart-btn ${safeProduct.stockQuantity <= 0 ? "disabled" : ""}`} 
+              onClick={handleAddToCart}
+              disabled={safeProduct.stockQuantity <= 0}
+            >
+              {safeProduct.stockQuantity <= 0 ? "OUT OF STOCK" : "ADD TO BAG"}
+            </button>
 
           <div className="promo-banner">
             <div className="promo-title">10% OFF YOUR FIRST ORDER | NEW MEMBER EXCLUSIVE</div>

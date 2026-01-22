@@ -161,21 +161,24 @@ const ProductGrid = ({
         <div className="product-grid">
           {products.length > 0 ? (
             products.map((product, index) => (
-              <div
-                className="product-card"
-                key={product.id ?? `${product.name ?? "product"}-${index}`}
-                onClick={() => goToProductDetail(product, index)}
-              >
-                <div className="product-image">
-                  <img
-                    src={product.images && product.images[0]}
-                    alt={product.name}
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = getProductPlaceholder();
-                    }}
-                  />
-                </div>
+                <div
+                  className={`product-card ${product.stockQuantity <= 0 ? "out-of-stock" : ""}`}
+                  key={product.id ?? `${product.name ?? "product"}-${index}`}
+                  onClick={() => goToProductDetail(product, index)}
+                >
+                  <div className="product-image">
+                    {product.stockQuantity <= 0 && (
+                      <div className="out-of-stock-badge">OUT OF STOCK</div>
+                    )}
+                    <img
+                      src={product.images && product.images[0]}
+                      alt={product.name}
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = getProductPlaceholder();
+                      }}
+                    />
+                  </div>
 
                 <div className="product-info">
                   <h3 className="product-title">

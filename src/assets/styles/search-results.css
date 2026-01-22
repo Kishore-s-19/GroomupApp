@@ -92,6 +92,29 @@
   height: 250px;
   background: #f8f8f8;
   overflow: hidden;
+  position: relative;
+}
+
+.result-image .out-of-stock-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 4px 10px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  z-index: 2;
+  border-radius: 2px;
+}
+
+.result-card.out-of-stock {
+  opacity: 0.8;
+}
+
+.result-card.out-of-stock img {
+  filter: grayscale(0.5);
 }
 
 .result-image img {

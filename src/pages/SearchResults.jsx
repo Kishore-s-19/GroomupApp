@@ -65,17 +65,20 @@ const SearchResults = () => {
               {searchResults.length} product{searchResults.length !== 1 ? "s" : ""} found
             </div>
             
-            <div className="results-grid">
-              {searchResults.map((product) => (
-                <div
-                  key={product.id}
-                  className="result-card"
-                  onClick={() => handleProductClick(product.id)}
-                >
-                  <div className="result-image">
-                    <img src={product.images[0]} alt={product.name} />
-                  </div>
-                  <div className="result-info">
+              <div className="results-grid">
+                {searchResults.map((product) => (
+                  <div
+                    key={product.id}
+                    className={`result-card ${product.stockQuantity <= 0 ? "out-of-stock" : ""}`}
+                    onClick={() => handleProductClick(product.id)}
+                  >
+                    <div className="result-image">
+                      {product.stockQuantity <= 0 && (
+                        <div className="out-of-stock-badge">OUT OF STOCK</div>
+                      )}
+                      <img src={product.images[0]} alt={product.name} />
+                    </div>
+                    <div className="result-info">
                     <div className="result-brand">{product.brand}</div>
                     <div className="result-name">{product.name}</div>
                     <div className="result-category">{product.category}</div>

@@ -85,16 +85,35 @@ public class Product {
     @Column(nullable = false)
     private Boolean active = true;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime updatedAt;
 
     @Version
     private Long version;
 
     public Product() {
+    }
+
+    @PostLoad
+    protected void repairLegacyData() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
+        if (this.stockQuantity == null) {
+            this.stockQuantity = 0;
+        }
+        if (this.reservedQuantity == null) {
+            this.reservedQuantity = 0;
+        }
+        if (this.active == null) {
+            this.active = true;
+        }
     }
 
     public Long getId() {

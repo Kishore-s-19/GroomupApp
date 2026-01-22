@@ -41,10 +41,18 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Product not found"));
         
+        log.info("Loaded product for update: {} (Version: {}, CreatedAt: {})", id, product.getVersion(), product.getCreatedAt());
+        
         applyProductRequest(product, request);
-        Product saved = productRepository.saveAndFlush(product);
-        log.info("Product updated and flushed: {}", id);
-        return saved;
+        
+        try {
+            Product saved = productRepository.saveAndFlush(product);
+            log.info("Product updated and flushed successfully: {}", id);
+            return saved;
+        } catch (Exception e) {
+            log.error("Failed to save product {}: {} - {}", id, e.getClass().getSimpleName(), e.getMessage());
+            throw e;
+        }
     }
 
     public void applyProductRequest(Product product, ProductRequest request) {

@@ -34,13 +34,23 @@ public class Order {
     @Column(nullable = false, length = 1024)
     private String shippingAddress;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime createdAt;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime updatedAt;
 
     public Order() {
+    }
+
+    @PostLoad
+    protected void repairLegacyData() {
+        if (this.createdAt == null) {
+            this.createdAt = LocalDateTime.now();
+        }
+        if (this.updatedAt == null) {
+            this.updatedAt = this.createdAt;
+        }
     }
 
     public void addItem(OrderItem item) {

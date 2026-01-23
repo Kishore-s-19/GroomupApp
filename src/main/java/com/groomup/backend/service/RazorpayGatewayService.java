@@ -51,22 +51,35 @@ public class RazorpayGatewayService {
     public void validateConfiguration() {
         if (keyId == null || keyId.isBlank()) {
             log.warn("Razorpay Key ID not configured. Payments will fail.");
-        } else if (keyId.startsWith("rzp_test_")) {
-            log.info("Razorpay configured in TEST mode");
-        } else if (keyId.startsWith("rzp_live_")) {
-            log.info("Razorpay configured in LIVE mode");
         } else {
-            log.warn("Razorpay Key ID format unrecognized: {}", keyId.substring(0, Math.min(10, keyId.length())));
+            String mode = keyId.startsWith("rzp_test_") ? "TEST" : (keyId.startsWith("rzp_live_") ? "LIVE" : "UNKNOWN");
+            log.info("Razorpay Mode: {}", mode);
+            log.info("Razorpay Key ID: {}...{} (length: {})", 
+                keyId.substring(0, Math.min(8, keyId.length())),
+                keyId.substring(Math.max(0, keyId.length() - 4)),
+                keyId.length());
+            
+            // Check for potential hidden characters that trim() might miss or that user might have pasted
+            for (char c : keyId.toCharArray()) {
+                if (c < 33 || c > 126) {
+                    log.error("CRITICAL: Key ID contains hidden character at code: {}", (int)c);
+                }
+            }
         }
 
         if (keySecret == null || keySecret.isBlank()) {
             log.warn("Razorpay Key Secret not configured. Payments will fail.");
         } else {
-            log.info("Razorpay Key Secret loaded (length: {})", keySecret.length());
-        }
+            log.info("Razorpay Key Secret: {}...{} (length: {})", 
+                keySecret.substring(0, Math.min(3, keySecret.length())),
+                keySecret.substring(Math.max(0, keySecret.length() - 3)),
+                keySecret.length());
 
-        if (!keyId.isBlank()) {
-            log.info("Razorpay Key ID loaded: {}...", keyId.substring(0, Math.min(8, keyId.length())));
+            for (char c : keySecret.toCharArray()) {
+                if (c < 33 || c > 126) {
+                    log.error("CRITICAL: Key Secret contains hidden character at code: {}", (int)c);
+                }
+            }
         }
 
         if ("production".equalsIgnoreCase(environment) && keyId != null && keyId.startsWith("rzp_test_")) {
@@ -111,7 +124,7 @@ public class RazorpayGatewayService {
         String body = "{\"amount\":" + amountSubunits
                 + ",\"currency\":\"" + sanitizedCurrency
                 + "\",\"receipt\":\"" + sanitizedReceipt
-                + "\",\"payment_capture\":1}";
+                + "\"}";
 
         String authHeader = buildBasicAuthHeader(keyId, keySecret);
 

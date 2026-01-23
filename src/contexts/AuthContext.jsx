@@ -130,11 +130,13 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       setLoading(true);
       
-      const sanitizedData = {
-        email: userData?.email?.trim().toLowerCase(),
-        password: userData?.password,
-        name: userData?.name?.trim()
-      };
+        const sanitizedData = {
+          email: userData?.email?.trim().toLowerCase(),
+          password: userData?.password,
+          name: userData?.name?.trim(),
+          phone: userData?.phone?.trim()
+        };
+
       
       const response = await authService.register(sanitizedData);
       const token = response?.token;

@@ -10,6 +10,7 @@ const Register = () => {
   const [form, setForm] = useState({
     name: "",
     email: "",
+    phone: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);

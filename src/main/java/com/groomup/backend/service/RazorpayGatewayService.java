@@ -40,8 +40,8 @@ public class RazorpayGatewayService {
             @Value("${razorpay.key-id:}") String keyId,
             @Value("${razorpay.key-secret:}") String keySecret
     ) {
-        this.keyId = keyId;
-        this.keySecret = keySecret;
+        this.keyId = keyId == null ? "" : keyId.trim();
+        this.keySecret = keySecret == null ? "" : keySecret.trim();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
@@ -61,6 +61,12 @@ public class RazorpayGatewayService {
 
         if (keySecret == null || keySecret.isBlank()) {
             log.warn("Razorpay Key Secret not configured. Payments will fail.");
+        } else {
+            log.info("Razorpay Key Secret loaded (length: {})", keySecret.length());
+        }
+
+        if (!keyId.isBlank()) {
+            log.info("Razorpay Key ID loaded: {}...", keyId.substring(0, Math.min(8, keyId.length())));
         }
 
         if ("production".equalsIgnoreCase(environment) && keyId != null && keyId.startsWith("rzp_test_")) {
@@ -145,13 +151,14 @@ public class RazorpayGatewayService {
             description = "HTTP " + response.statusCode();
         }
         
-        log.error("Razorpay order creation failed: {} - {}", response.statusCode(), description);
-        
+        log.error("Razorpay order creation failed: {} - {} - body={}", response.statusCode(), description, response.body());
+
         if (response.statusCode() == 401) {
             throw new ResponseStatusException(BAD_GATEWAY, "Payment gateway authentication failed");
         } else if (response.statusCode() == 400) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid payment request: " + description);
         }
+
         
         throw new ResponseStatusException(BAD_GATEWAY, "Payment gateway error: " + description);
     }

@@ -47,46 +47,53 @@ const Register = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
-          <input
-            type="text"
-            name="name"
-            placeholder="Full Name"
-            required
-            value={form.name}
-            onChange={handleChange}
-            disabled={loading}
-          />
+          <form onSubmit={handleSubmit}>
+            <input
+              type="text"
+              name="name"
+              placeholder="Full Name"
+              required
+              minLength={2}
+              maxLength={100}
+              value={form.name}
+              onChange={handleChange}
+              disabled={loading}
+            />
 
-          <input
-            type="email"
-            name="email"
-            placeholder="Email address"
-            required
-            value={form.email}
-            onChange={handleChange}
-            disabled={loading}
-          />
+            <input
+              type="email"
+              name="email"
+              placeholder="Email address"
+              required
+              value={form.email}
+              onChange={handleChange}
+              disabled={loading}
+            />
 
-          <input
-            type="tel"
-            name="phone"
-            placeholder="Phone Number"
-            required
-            value={form.phone}
-            onChange={handleChange}
-            disabled={loading}
-          />
+            <input
+              type="tel"
+              name="phone"
+              placeholder="Phone Number"
+              required
+              minLength={7}
+              maxLength={20}
+              value={form.phone}
+              onChange={handleChange}
+              disabled={loading}
+            />
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            required
-            value={form.password}
-            onChange={handleChange}
-            disabled={loading}
-          />
+            <input
+              type="password"
+              name="password"
+              placeholder="Password"
+              required
+              minLength={8}
+              maxLength={100}
+              value={form.password}
+              onChange={handleChange}
+              disabled={loading}
+            />
+
 
           <button type="submit" disabled={loading}>
             {loading ? "Creating Account..." : "Register"}

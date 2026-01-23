@@ -15,20 +15,28 @@ const isValidJwt = (token) => {
   return parts.length === 3 && parts.every(Boolean);
 };
 
-const toErrorMessage = (payload, fallbackMessage) => {
-  if (!payload) return fallbackMessage;
-  if (typeof payload === 'string') return payload || fallbackMessage;
-  if (typeof payload !== 'object') return fallbackMessage;
+  const toErrorMessage = (payload, fallbackMessage) => {
+    if (!payload) return fallbackMessage;
+    if (typeof payload === 'string') return payload || fallbackMessage;
+    if (typeof payload !== 'object') return fallbackMessage;
 
-  return (
-    payload.message ||
-    payload.error ||
-    payload.title ||
-    payload.detail ||
-    payload.path ||
-    fallbackMessage
-  );
-};
+    const fieldErrors = Object.entries(payload)
+      .filter(([key, value]) => key && typeof value === 'string')
+      .map(([key, value]) => `${key}: ${value}`);
+
+    if (fieldErrors.length > 0) {
+      return fieldErrors.join(', ');
+    }
+
+    return (
+      payload.message ||
+      payload.error ||
+      payload.title ||
+      payload.detail ||
+      payload.path ||
+      fallbackMessage
+    );
+  };
 
 const toApiError = (axiosError) => {
   const status = axiosError?.response?.status;

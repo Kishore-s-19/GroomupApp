@@ -2,6 +2,7 @@ package com.groomup.backend.service;
 
 import com.groomup.backend.dto.PaymentRequest;
 import com.groomup.backend.dto.PaymentResponse;
+import com.groomup.backend.dto.RazorpayVerificationRequest;
 import com.groomup.backend.model.Order;
 import com.groomup.backend.model.OrderItem;
 import com.groomup.backend.model.Payment;
@@ -53,6 +54,9 @@ public class PaymentService {
 
     @Value("${razorpay.webhook-secret:}")
     private String webhookSecret;
+
+    @Value("${razorpay.key-secret:}")
+    private String razorpayKeySecret;
 
     public PaymentService(
             OrderRepository orderRepository,
@@ -243,6 +247,82 @@ public class PaymentService {
         }
     }
 
+    @Transactional
+    public PaymentResponse verifyRazorpayPayment(RazorpayVerificationRequest request) {
+        if (request == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid verification request");
+        }
+        if (razorpayKeySecret == null || razorpayKeySecret.isBlank()) {
+            log.error("Razorpay key secret not configured for verification");
+            throw new ResponseStatusException(BAD_REQUEST, "Payment verification not configured");
+        }
+
+        User user = getCurrentUser();
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Order not found"));
+
+        if (!order.getUser().getId().equals(user.getId())) {
+            throw new ResponseStatusException(UNAUTHORIZED, "Access denied");
+        }
+
+        Payment payment = paymentRepository.findByGatewayOrderId(request.getRazorpayOrderId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        NOT_FOUND,
+                        "Payment not found for gatewayOrderId " + request.getRazorpayOrderId()
+                ));
+
+        if (!payment.getOrder().getId().equals(order.getId())) {
+            throw new ResponseStatusException(BAD_REQUEST, "Order mismatch for payment verification");
+        }
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            return toPaymentResponse(payment);
+        }
+
+        if (isTerminalPaymentStatus(payment.getStatus())) {
+            throw new ResponseStatusException(CONFLICT, "Payment already finalized");
+        }
+
+        boolean signatureValid = verifyCheckoutSignature(
+                request.getRazorpayOrderId(),
+                request.getRazorpayPaymentId(),
+                request.getRazorpaySignature()
+        );
+
+        if (!signatureValid) {
+            log.warn("Invalid Razorpay checkout signature for orderId={}", order.getId());
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid payment signature");
+        }
+
+        if (payment.getGatewayPaymentId() == null || payment.getGatewayPaymentId().isBlank()) {
+            payment.setGatewayPaymentId(request.getRazorpayPaymentId());
+        }
+        if (payment.getGatewaySignature() == null || payment.getGatewaySignature().isBlank()) {
+            payment.setGatewaySignature(request.getRazorpaySignature());
+        }
+
+        payment.setStatus(PaymentStatus.SUCCESS);
+        paymentRepository.save(payment);
+
+        Order paymentOrder = payment.getOrder();
+        if (paymentOrder != null) {
+            if ("CANCELLED".equals(paymentOrder.getStatus())) {
+                log.warn("Payment verified for cancelled order. orderId={}", paymentOrder.getId());
+                throw new ResponseStatusException(CONFLICT, "Order already cancelled");
+            }
+
+            if (!"PAID".equals(paymentOrder.getStatus())) {
+                orderService.confirmStockDeduction(paymentOrder.getId());
+                paymentOrder.setStatus("PAID");
+                orderRepository.save(paymentOrder);
+            }
+        }
+
+        log.info("Payment {} verified via checkout signature", payment.getId());
+
+        return toPaymentResponse(payment);
+    }
+
     private void handlePaymentCaptured(JsonNode root, String event) {
         String gatewayOrderId = extractGatewayOrderId(root);
         if (gatewayOrderId == null) {
@@ -382,6 +462,54 @@ public class PaymentService {
         }
     }
 
+    private boolean verifyCheckoutSignature(String razorpayOrderId, String razorpayPaymentId, String signature) {
+        try {
+            if (razorpayOrderId == null || razorpayOrderId.isBlank() ||
+                    razorpayPaymentId == null || razorpayPaymentId.isBlank() ||
+                    signature == null || signature.isBlank()) {
+                return false;
+            }
+
+            String secret = sanitizeKey(razorpayKeySecret);
+            if (secret.isBlank()) {
+                return false;
+            }
+
+            String payload = razorpayOrderId + "|" + razorpayPaymentId;
+
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec secretKey = new SecretKeySpec(
+                    secret.getBytes(StandardCharsets.UTF_8),
+                    "HmacSHA256"
+            );
+            mac.init(secretKey);
+
+            byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
+            String expectedSignature = HexFormat.of().formatHex(hash);
+
+            byte[] expectedBytes = expectedSignature.getBytes(StandardCharsets.UTF_8);
+            byte[] actualBytes = signature.trim().toLowerCase().getBytes(StandardCharsets.UTF_8);
+
+            return MessageDigest.isEqual(expectedBytes, actualBytes);
+
+        } catch (Exception e) {
+            log.error("Checkout signature verification failed", e);
+            throw new RuntimeException("Checkout signature verification failed", e);
+        }
+    }
+
+    private static String sanitizeKey(String value) {
+        if (value == null) {
+            return "";
+        }
+        String sanitized = value.trim();
+        if ((sanitized.startsWith("\"") && sanitized.endsWith("\""))
+                || (sanitized.startsWith("'") && sanitized.endsWith("'"))) {
+            sanitized = sanitized.substring(1, sanitized.length() - 1).trim();
+        }
+        return sanitized.replaceAll("\\s+", "");
+    }
+
     private static String extractGatewayOrderId(JsonNode root) {
         String orderId = textOrNull(root.path("payload").path("payment").path("entity").path("order_id"));
         if (orderId == null) {
@@ -425,6 +553,19 @@ public class PaymentService {
                 status == PaymentStatus.CANCELLED ||
                 status == PaymentStatus.EXPIRED ||
                 status == PaymentStatus.REFUNDED;
+    }
+
+    private PaymentResponse toPaymentResponse(Payment payment) {
+        return new PaymentResponse(
+                payment.getId(),
+                payment.getOrder().getId(),
+                payment.getProvider(),
+                payment.getStatus().name(),
+                payment.getAmount(),
+                payment.getCurrency(),
+                payment.getGatewayOrderId(),
+                null
+        );
     }
 
     private User getCurrentUser() {

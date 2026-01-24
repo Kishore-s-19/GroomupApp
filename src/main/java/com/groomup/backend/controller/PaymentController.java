@@ -2,6 +2,7 @@ package com.groomup.backend.controller;
 
 import com.groomup.backend.dto.PaymentRequest;
 import com.groomup.backend.dto.PaymentResponse;
+import com.groomup.backend.dto.RazorpayVerificationRequest;
 import com.groomup.backend.model.Payment;
 import com.groomup.backend.service.PaymentService;
 import jakarta.validation.Valid;
@@ -38,6 +39,14 @@ public class PaymentController {
     ) {
         paymentService.handleRazorpayWebhook(payload, signature);
         return ResponseEntity.ok("Webhook processed");
+    }
+
+    @PostMapping("/verify/razorpay")
+    public ResponseEntity<PaymentResponse> verifyRazorpayPayment(
+            @RequestBody @Valid RazorpayVerificationRequest request
+    ) {
+        PaymentResponse response = paymentService.verifyRazorpayPayment(request);
+        return ResponseEntity.ok(response);
     }
 
       // STEP 8: Get latest payment for an order

@@ -12,6 +12,8 @@ import com.groomup.backend.repository.OrderRepository;
 import com.groomup.backend.repository.PaymentRepository;
 import com.groomup.backend.repository.ProductRepository;
 import com.groomup.backend.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,11 +28,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.NOT_FOUND;
@@ -48,6 +49,7 @@ public class PaymentService {
     private final UserRepository userRepository;
     private final RazorpayGatewayService razorpayGatewayService;
     private final OrderService orderService;
+    private final ObjectMapper objectMapper;
 
     @Value("${razorpay.webhook-secret:}")
     private String webhookSecret;
@@ -58,7 +60,8 @@ public class PaymentService {
             ProductRepository productRepository,
             UserRepository userRepository,
             RazorpayGatewayService razorpayGatewayService,
-            OrderService orderService
+            OrderService orderService,
+            ObjectMapper objectMapper
     ) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
@@ -66,6 +69,7 @@ public class PaymentService {
         this.userRepository = userRepository;
         this.razorpayGatewayService = razorpayGatewayService;
         this.orderService = orderService;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional
@@ -218,32 +222,40 @@ public class PaymentService {
             throw new ResponseStatusException(BAD_REQUEST, "Invalid Razorpay signature");
         }
 
-        log.info("Razorpay webhook verified successfully");
-
-        String event = extractJsonString(payload, "event");
-        if (event == null || event.isBlank()) {
+        JsonNode root = parseWebhookPayload(payload);
+        String event = textOrNull(root.path("event"));
+        if (event == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Invalid webhook payload: missing event");
         }
 
-        if (!"payment.captured".equals(event)) {
-            log.info("Ignoring webhook event: {}", event);
-            return;
-        }
+        log.info("Razorpay webhook event received: {}", event);
 
-        String gatewayOrderId = extractJsonString(payload, "order_id");
-        if (gatewayOrderId == null || gatewayOrderId.isBlank()) {
+        switch (event) {
+            case "payment.captured":
+            case "order.paid":
+                handlePaymentCaptured(root, event);
+                return;
+            case "payment.failed":
+                handlePaymentFailed(root, event);
+                return;
+            default:
+                log.info("Ignoring webhook event: {}", event);
+        }
+    }
+
+    private void handlePaymentCaptured(JsonNode root, String event) {
+        String gatewayOrderId = extractGatewayOrderId(root);
+        if (gatewayOrderId == null) {
             throw new ResponseStatusException(BAD_REQUEST, "Invalid webhook payload: missing order_id");
         }
 
-        String gatewayPaymentId = extractPaymentIdFromPayload(payload);
-        if (gatewayPaymentId == null || gatewayPaymentId.isBlank()) {
-            throw new ResponseStatusException(BAD_REQUEST, "Invalid webhook payload: missing payment id");
-        }
-
-        Payment existingByPaymentId = paymentRepository.findByGatewayPaymentId(gatewayPaymentId).orElse(null);
-        if (existingByPaymentId != null && existingByPaymentId.getStatus() == PaymentStatus.SUCCESS) {
-            log.info("Duplicate webhook received for paymentId={}, ignoring", gatewayPaymentId);
-            return;
+        String gatewayPaymentId = extractGatewayPaymentId(root);
+        if (gatewayPaymentId != null) {
+            Payment existingByPaymentId = paymentRepository.findByGatewayPaymentId(gatewayPaymentId).orElse(null);
+            if (existingByPaymentId != null && existingByPaymentId.getStatus() == PaymentStatus.SUCCESS) {
+                log.info("Duplicate webhook received for paymentId={}, ignoring", gatewayPaymentId);
+                return;
+            }
         }
 
         Payment payment = paymentRepository.findByGatewayOrderId(gatewayOrderId)
@@ -257,14 +269,14 @@ public class PaymentService {
             return;
         }
 
-        if (payment.getStatus() == PaymentStatus.EXPIRED || 
-            payment.getStatus() == PaymentStatus.FAILED || 
-            payment.getStatus() == PaymentStatus.CANCELLED) {
+        if (isTerminalPaymentStatus(payment.getStatus())) {
             log.warn("Ignoring webhook for paymentId={} (status={})", payment.getId(), payment.getStatus());
             return;
         }
 
-        payment.setGatewayPaymentId(gatewayPaymentId);
+        if (gatewayPaymentId != null && (payment.getGatewayPaymentId() == null || payment.getGatewayPaymentId().isBlank())) {
+            payment.setGatewayPaymentId(gatewayPaymentId);
+        }
         payment.setStatus(PaymentStatus.SUCCESS);
         paymentRepository.save(payment);
 
@@ -274,17 +286,78 @@ public class PaymentService {
                 log.warn("Payment received for cancelled order. Marking as requires review. orderId={}", order.getId());
                 return;
             }
-            
+
             orderService.confirmStockDeduction(order.getId());
             order.setStatus("PAID");
             orderRepository.save(order);
-            
-            log.info("Order {} marked as PAID, stock deducted", order.getId());
+
+            log.info("Order {} marked as PAID, stock deducted (event={})", order.getId(), event);
+        }
+    }
+
+    private void handlePaymentFailed(JsonNode root, String event) {
+        String gatewayOrderId = extractGatewayOrderId(root);
+        if (gatewayOrderId == null) {
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid webhook payload: missing order_id");
+        }
+
+        String gatewayPaymentId = extractGatewayPaymentId(root);
+        String failureReason = extractFailureReason(root);
+
+        if (gatewayPaymentId != null) {
+            Payment existingByPaymentId = paymentRepository.findByGatewayPaymentId(gatewayPaymentId).orElse(null);
+            if (existingByPaymentId != null && existingByPaymentId.getStatus() == PaymentStatus.SUCCESS) {
+                log.warn("Ignoring failed webhook for already successful paymentId={}", gatewayPaymentId);
+                return;
+            }
+        }
+
+        Payment payment = paymentRepository.findByGatewayOrderId(gatewayOrderId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        NOT_FOUND,
+                        "Payment not found for gatewayOrderId " + gatewayOrderId
+                ));
+
+        if (payment.getStatus() == PaymentStatus.SUCCESS) {
+            log.warn("Ignoring failed webhook for successful paymentId={}", payment.getId());
+            return;
+        }
+
+        if (payment.getStatus() == PaymentStatus.FAILED ||
+                payment.getStatus() == PaymentStatus.CANCELLED ||
+                payment.getStatus() == PaymentStatus.EXPIRED ||
+                payment.getStatus() == PaymentStatus.REFUNDED) {
+            log.info("Duplicate failed webhook for paymentId={} (status={})", payment.getId(), payment.getStatus());
+            return;
+        }
+
+        if (gatewayPaymentId != null && (payment.getGatewayPaymentId() == null || payment.getGatewayPaymentId().isBlank())) {
+            payment.setGatewayPaymentId(gatewayPaymentId);
+        }
+        payment.setStatus(PaymentStatus.FAILED);
+        if (failureReason != null && (payment.getFailureReason() == null || payment.getFailureReason().isBlank())) {
+            payment.setFailureReason(failureReason);
+        }
+        paymentRepository.save(payment);
+
+        log.info("Payment {} marked as FAILED from webhook (event={})", payment.getId(), event);
+    }
+
+    private JsonNode parseWebhookPayload(String payload) {
+        try {
+            return objectMapper.readTree(payload);
+        } catch (Exception e) {
+            log.warn("Invalid webhook payload");
+            throw new ResponseStatusException(BAD_REQUEST, "Invalid webhook payload");
         }
     }
 
     private boolean verifySignature(String payload, String actualSignature) {
         try {
+            if (actualSignature == null || actualSignature.isBlank()) {
+                return false;
+            }
+
             Mac mac = Mac.getInstance("HmacSHA256");
             SecretKeySpec secretKey = new SecretKeySpec(
                     webhookSecret.getBytes(StandardCharsets.UTF_8),
@@ -295,9 +368,11 @@ public class PaymentService {
             byte[] hash = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
             String expectedSignature = HexFormat.of().formatHex(hash);
 
-            boolean valid = expectedSignature.equalsIgnoreCase(actualSignature);
+            byte[] expectedBytes = expectedSignature.getBytes(StandardCharsets.UTF_8);
+            byte[] actualBytes = actualSignature.trim().toLowerCase().getBytes(StandardCharsets.UTF_8);
+            boolean valid = MessageDigest.isEqual(expectedBytes, actualBytes);
             if (!valid) {
-                log.warn("Signature mismatch. Expected: {}, Actual: {}", expectedSignature, actualSignature);
+                log.warn("Signature mismatch");
             }
             return valid;
 
@@ -307,33 +382,49 @@ public class PaymentService {
         }
     }
 
-    private static String extractJsonString(String json, String key) {
-        if (json == null || json.isBlank() || key == null || key.isBlank()) {
-            return null;
+    private static String extractGatewayOrderId(JsonNode root) {
+        String orderId = textOrNull(root.path("payload").path("payment").path("entity").path("order_id"));
+        if (orderId == null) {
+            orderId = textOrNull(root.path("payload").path("order").path("entity").path("id"));
         }
-        Pattern p = Pattern.compile("\"" + Pattern.quote(key) + "\"\\s*:\\s*\"([^\"]*)\"");
-        Matcher m = p.matcher(json);
-        if (m.find()) {
-            return m.group(1);
-        }
-        return null;
+        return orderId;
     }
 
-    private static String extractPaymentIdFromPayload(String payload) {
-        if (payload == null || payload.isBlank()) {
+    private static String extractGatewayPaymentId(JsonNode root) {
+        return textOrNull(root.path("payload").path("payment").path("entity").path("id"));
+    }
+
+    private static String extractFailureReason(JsonNode root) {
+        String reason = textOrNull(root.path("payload").path("payment").path("entity").path("error_description"));
+        if (reason == null) {
+            reason = textOrNull(root.path("payload").path("payment").path("entity").path("error_reason"));
+        }
+        if (reason == null) {
+            reason = textOrNull(root.path("payload").path("payment").path("entity").path("error_code"));
+        }
+        return reason;
+    }
+
+    private static String textOrNull(JsonNode node) {
+        if (node == null || node.isMissingNode() || node.isNull()) {
             return null;
         }
-
-        Pattern paymentEntityId = Pattern.compile(
-                "\"payment\"\\s*:\\s*\\{[\\s\\S]*?\"entity\"\\s*:\\s*\\{[\\s\\S]*?\"id\"\\s*:\\s*\"([^\"]+)\"",
-                Pattern.DOTALL
-        );
-        Matcher m = paymentEntityId.matcher(payload);
-        if (m.find()) {
-            return m.group(1);
+        String value = node.asText();
+        if (value == null || value.isBlank()) {
+            return null;
         }
+        return value;
+    }
 
-        return extractJsonString(payload, "id");
+    private static boolean isTerminalPaymentStatus(PaymentStatus status) {
+        if (status == null) {
+            return false;
+        }
+        return status == PaymentStatus.SUCCESS ||
+                status == PaymentStatus.FAILED ||
+                status == PaymentStatus.CANCELLED ||
+                status == PaymentStatus.EXPIRED ||
+                status == PaymentStatus.REFUNDED;
     }
 
     private User getCurrentUser() {

@@ -27,21 +27,23 @@ import static org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE;
 public class RazorpayGatewayService {
 
     private static final Logger log = LoggerFactory.getLogger(RazorpayGatewayService.class);
-    private static final String RAZORPAY_API_URL = "https://api.razorpay.com";
 
     private final HttpClient httpClient;
     private final String keyId;
     private final String keySecret;
+    private final String baseUrl;
 
     @Value("${app.environment:development}")
     private String environment;
 
     public RazorpayGatewayService(
             @Value("${razorpay.key-id:}") String keyId,
-            @Value("${razorpay.key-secret:}") String keySecret
+            @Value("${razorpay.key-secret:}") String keySecret,
+            @Value("${razorpay.base-url:https://api.razorpay.com}") String baseUrl
     ) {
-        this.keyId = keyId == null ? "" : keyId.trim();
-        this.keySecret = keySecret == null ? "" : keySecret.trim();
+        this.keyId = sanitizeKey(keyId);
+        this.keySecret = sanitizeKey(keySecret);
+        this.baseUrl = (baseUrl == null || baseUrl.isBlank()) ? "https://api.razorpay.com" : baseUrl.trim();
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
@@ -129,7 +131,7 @@ public class RazorpayGatewayService {
         String authHeader = buildBasicAuthHeader(keyId, keySecret);
 
         HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(RAZORPAY_API_URL + "/v1/orders"))
+                .uri(URI.create(baseUrl + "/v1/orders"))
                 .timeout(Duration.ofSeconds(30))
                 .header("Authorization", authHeader)
                 .header("Content-Type", "application/json")
@@ -195,6 +197,18 @@ public class RazorpayGatewayService {
             return code;
         }
         return null;
+    }
+
+    private static String sanitizeKey(String value) {
+        if (value == null) {
+            return "";
+        }
+        String sanitized = value.trim();
+        if ((sanitized.startsWith("\"") && sanitized.endsWith("\""))
+                || (sanitized.startsWith("'") && sanitized.endsWith("'"))) {
+            sanitized = sanitized.substring(1, sanitized.length() - 1).trim();
+        }
+        return sanitized.replaceAll("\\s+", "");
     }
 
     private static String extractJsonString(String json, String key) {

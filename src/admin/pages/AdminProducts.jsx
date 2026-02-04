@@ -131,19 +131,27 @@ export function AdminProducts() {
     <div className="admin-dashboard">
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
-          <h2>GROOMUP</h2>
-          <span>Admin Panel</span>
+          <div className="admin-logo">K</div>
+          <div className="admin-logo-text">
+            <h2>Kishore S</h2>
+            <span>PRO ADMIN</span>
+          </div>
         </div>
-        <nav className="admin-nav">
-          <Link to="/admin/dashboard" className="admin-nav-item">
-            <span className="nav-icon">&#9632;</span>
-            Dashboard
-          </Link>
-          <Link to="/admin/products" className="admin-nav-item active">
-            <span className="nav-icon">&#9642;</span>
-            Products
-          </Link>
-        </nav>
+
+        <div className="admin-sidebar-section">
+          <span className="section-label">MAIN</span>
+          <nav className="admin-nav">
+            <Link to="/admin/dashboard" className="admin-nav-item">
+              <span className="nav-icon">&#9632;</span>
+              <span>Dashboard</span>
+            </Link>
+            <Link to="/admin/products" className="admin-nav-item active">
+              <span className="nav-icon">&#9642;</span>
+              <span>E-Commerce</span>
+            </Link>
+          </nav>
+        </div>
+
         <div className="admin-sidebar-footer">
           <button onClick={handleLogout} className="admin-logout-btn">
             Sign Out
@@ -235,7 +243,7 @@ export function AdminProducts() {
             </div>
             <form onSubmit={handleSubmit} className="product-form">
               {formError && <div className="form-error">{formError}</div>}
-              
+
               <div className="form-group">
                 <label htmlFor="name">Product Name *</label>
                 <input

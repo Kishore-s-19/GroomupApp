@@ -30,18 +30,18 @@ export const isValidAdminToken = (token) => {
   if (!token || typeof token !== 'string') return false;
   const parts = token.split('.');
   if (parts.length !== 3) return false;
-  
+
   const payload = decodeJwt(token);
   if (!payload) return false;
-  
+
   if (payload.exp && payload.exp * 1000 < Date.now()) return false;
-  
+
   const roles = payload.roles || payload.role || payload.authorities || [];
   const roleArray = Array.isArray(roles) ? roles : [roles];
-  const hasAdminRole = roleArray.some(r => 
+  const hasAdminRole = roleArray.some(r =>
     r === 'ADMIN' || r === 'ROLE_ADMIN' || (r.authority && (r.authority === 'ROLE_ADMIN' || r.authority === 'ADMIN'))
   );
-  
+
   return hasAdminRole;
 };
 
@@ -90,12 +90,12 @@ adminApi.interceptors.response.use(
   (response) => response.data,
   (error) => {
     const status = error.response?.status;
-    
+
     if (status === 401 || status === 403) {
       clearAdminAuth();
       window.location.href = '/admin/login';
     }
-    
+
     const message = error.response?.data?.message || error.response?.data?.error || error.message || 'Request failed';
     return Promise.reject(new Error(message));
   }
@@ -104,26 +104,26 @@ adminApi.interceptors.response.use(
 export const adminAuthService = {
   login: async (credentials) => {
     const response = await adminApi.post('/auth/login', credentials);
-    
+
     if (!response.token) {
       throw new Error('Invalid response from server');
     }
-    
+
     if (!isValidAdminToken(response.token)) {
       throw new Error('Access denied. Admin privileges required.');
     }
-    
+
     const adminData = {
       token: response.token,
       email: response.email || credentials.email,
       name: response.name || 'Admin',
       role: 'ADMIN'
     };
-    
+
     setAdminAuth(adminData);
     return adminData;
   },
-  
+
   logout: () => {
     clearAdminAuth();
   }
@@ -133,21 +133,27 @@ export const adminProductService = {
   getAllProducts: async () => {
     return adminApi.get('/products');
   },
-  
+
   getProductById: async (id) => {
     return adminApi.get(`/products/${id}`);
   },
-  
+
   createProduct: async (productData) => {
     return adminApi.post('/products', productData);
   },
-  
+
   updateProduct: async (id, productData) => {
     return adminApi.put(`/products/${id}`, productData);
   },
-  
+
   deleteProduct: async (id) => {
     return adminApi.delete(`/products/${id}`);
+  }
+};
+
+export const adminDashboardService = {
+  getStats: async () => {
+    return adminApi.get('/admin/dashboard/stats');
   }
 };
 

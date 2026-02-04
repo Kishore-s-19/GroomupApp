@@ -1,32 +1,38 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { adminAuthService, getAdminUser, adminProductService } from '../services/adminApi';
-import { 
-  FiBox, FiUsers, FiShoppingBag, FiTrendingUp, FiSettings, 
-  FiSearch, FiBell, FiLogOut, FiPieChart, FiActivity, FiStar 
+import { adminAuthService, getAdminUser, adminDashboardService } from '../services/adminApi';
+import {
+  FiBox, FiUsers, FiShoppingBag, FiTrendingUp, FiSettings,
+  FiSearch, FiBell, FiLogOut, FiPieChart, FiActivity, FiStar
 } from 'react-icons/fi';
 import './AdminDashboard.css';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const adminUser = getAdminUser();
-  const [stats, setStats] = useState({ totalProducts: 0 });
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    totalOrders: 0,
+    totalRevenue: 0,
+    totalUsers: 0,
+    salesHistory: [],
+    topProducts: [],
+    categoryEarnings: {}
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
       try {
-        const products = await adminProductService.getAllProducts();
-        setStats({
-          totalProducts: Array.isArray(products) ? products.length : 0
-        });
-      } catch {
-        setStats({ totalProducts: 0 });
+        const data = await adminDashboardService.getStats();
+        setStats(data);
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchStats();
+    fetchDashboardData();
   }, []);
 
   const handleLogout = () => {
@@ -34,17 +40,40 @@ export function AdminDashboard() {
     navigate('/admin/login');
   };
 
+  // Path generation for Area Chart
+  const generateAreaPath = () => {
+    if (!stats.salesHistory || stats.salesHistory.length < 2) return "M0,150 L800,150";
+    const maxVal = Math.max(...stats.salesHistory.map(h => h.revenue || 0), 1000);
+    const points = stats.salesHistory.map((h, i) => {
+      const x = (i / (stats.salesHistory.length - 1)) * 800;
+      const y = 200 - ((h.revenue || 0) / maxVal) * 150;
+      return `${x},${y}`;
+    });
+    return `M0,200 L${points[0]} ${points.slice(1).map(p => `L${p}`).join(' ')} L800,200 Z`;
+  };
+
+  const generateLinePath = () => {
+    if (!stats.salesHistory || stats.salesHistory.length < 2) return "M0,150 L800,150";
+    const maxVal = Math.max(...stats.salesHistory.map(h => h.revenue || 0), 1000);
+    const points = stats.salesHistory.map((h, i) => {
+      const x = (i / (stats.salesHistory.length - 1)) * 800;
+      const y = 200 - ((h.revenue || 0) / maxVal) * 150;
+      return `${x},${y}`;
+    });
+    return `M${points[0]} ${points.slice(1).map(p => `L${p}`).join(' ')}`;
+  };
+
   return (
     <div className="admin-dashboard">
       <aside className="admin-sidebar">
         <div className="admin-sidebar-header">
-          <div className="admin-logo">P</div>
+          <div className="admin-logo">K</div>
           <div className="admin-logo-text">
-            <h2>Philbert</h2>
+            <h2>Kishore S</h2>
             <span>PRO ADMIN</span>
           </div>
         </div>
-        
+
         <div className="admin-sidebar-section">
           <span className="section-label">MAIN</span>
           <nav className="admin-nav">
@@ -99,11 +128,11 @@ export function AdminDashboard() {
             <FiPieChart className="header-icon" />
             <div className="notification-bell">
               <FiBell className="header-icon" />
-              <span className="bell-badge">5</span>
+              <span className="bell-badge">{stats.totalOrders > 9 ? '9+' : stats.totalOrders}</span>
             </div>
             <div className="admin-user-profile">
-              <img src="https://ui-avatars.com/api/?name=Admin&background=random" alt="Admin" />
-              <span>{adminUser?.email?.split('@')[0] || 'Admin'}</span>
+              <img src="https://ui-avatars.com/api/?name=Kishore+S&background=random" alt="Admin" />
+              <span>Kishore S</span>
             </div>
           </div>
         </header>
@@ -115,44 +144,52 @@ export function AdminDashboard() {
                 <div className="chart-header">
                   <h3>Sales Analytics</h3>
                   <div className="chart-filters">
-                    <select><option>January</option></select>
+                    <select><option>Current View</option></select>
                   </div>
                 </div>
                 <div className="stats-row">
                   <div className="mini-stat">
-                    <span className="label">Traffic</span>
-                    <span className="value">324,222</span>
-                    <span className="trend positive"><FiTrendingUp /> +15%</span>
+                    <span className="label">Users</span>
+                    <span className="value">{loading ? '...' : stats.totalUsers.toLocaleString()}</span>
+                    <span className="trend positive"><FiTrendingUp /> Active</span>
                   </div>
                   <div className="mini-stat">
                     <span className="label">Orders</span>
-                    <span className="value">{loading ? '...' : (stats.totalProducts * 12).toLocaleString()}</span>
-                    <span className="trend positive"><FiTrendingUp /> +4%</span>
+                    <span className="value">{loading ? '...' : stats.totalOrders.toLocaleString()}</span>
+                    <span className="trend positive"><FiTrendingUp /> Real-time</span>
                   </div>
                   <div className="mini-stat">
                     <span className="label">Revenue</span>
-                    <span className="value">$324,222</span>
-                    <span className="trend negative"><FiTrendingUp /> -5%</span>
+                    <span className="value">Rs. {loading ? '...' : stats.totalRevenue.toLocaleString()}</span>
+                    <span className="trend positive"><FiTrendingUp /> Total</span>
                   </div>
                 </div>
                 <div className="main-area-chart">
-                  {/* Mock SVG Area Chart */}
                   <svg viewBox="0 0 800 200" className="svg-chart">
                     <defs>
                       <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <path d="M0,150 Q100,50 200,120 T400,80 T600,140 T800,100 L800,200 L0,200 Z" fill="url(#chartGradient)" />
-                    <path d="M0,150 Q100,50 200,120 T400,80 T600,140 T800,100" fill="none" stroke="#10b981" strokeWidth="3" />
-                    {/* Points */}
-                    <circle cx="200" cy="120" r="4" fill="#10b981" />
-                    <circle cx="400" cy="80" r="4" fill="#10b981" />
-                    <circle cx="600" cy="140" r="4" fill="#10b981" />
+                    {!loading && (
+                      <>
+                        <path d={generateAreaPath()} fill="url(#chartGradient)" />
+                        <path d={generateLinePath()} fill="none" stroke="#10b981" strokeWidth="3" />
+                        {stats.salesHistory.map((h, i) => (
+                          <circle
+                            key={i}
+                            cx={(i / (stats.salesHistory.length - 1)) * 800}
+                            cy={200 - ((h.revenue || 0) / Math.max(...stats.salesHistory.map(h => h.revenue || 0), 1000)) * 150}
+                            r="4"
+                            fill="#10b981"
+                          />
+                        ))}
+                      </>
+                    )}
                   </svg>
                   <div className="chart-labels">
-                    <span>02</span><span>04</span><span>06</span><span>08</span><span>10</span><span>12</span><span>14</span><span>16</span>
+                    {stats.salesHistory.map((h, i) => <span key={i}>{h.date}</span>)}
                   </div>
                 </div>
               </div>
@@ -163,33 +200,38 @@ export function AdminDashboard() {
                   <div className="donut-chart-container">
                     <svg viewBox="0 0 100 100" className="donut-chart">
                       <circle cx="50" cy="50" r="40" fill="transparent" stroke="#e2e8f0" strokeWidth="10" />
+                      {/* Dynamically draw donut segments if time permits, for now show top 2 as segments */}
                       <circle cx="50" cy="50" r="40" fill="transparent" stroke="#fbbf24" strokeWidth="10" strokeDasharray="60 190" strokeDashoffset="0" />
                       <circle cx="50" cy="50" r="40" fill="transparent" stroke="#10b981" strokeWidth="10" strokeDasharray="80 170" strokeDashoffset="-60" />
                     </svg>
                     <div className="donut-legend">
-                      <div className="legend-item"><span className="dot" style={{backgroundColor: '#fbbf24'}}></span> Paleo Bars</div>
-                      <div className="legend-item"><span className="dot" style={{backgroundColor: '#10b981'}}></span> Bow Ties</div>
+                      {stats.topProducts.map((p, i) => (
+                        <div key={i} className="legend-item">
+                          <span className="dot" style={{ backgroundColor: i === 0 ? '#fbbf24' : '#10b981' }}></span>
+                          {p.name.length > 15 ? p.name.substring(0, 15) + '...' : p.name}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="chart-card secondary-chart">
                   <h3>Conversion Rate</h3>
                   <div className="conversion-display">
                     <div className="progress-circle">
                       <svg viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="45" fill="none" stroke="#eee" strokeWidth="8"/>
+                        <circle cx="50" cy="50" r="45" fill="none" stroke="#eee" strokeWidth="8" />
                         <circle cx="50" cy="50" r="45" fill="none" stroke="#10b981" strokeWidth="8" strokeDasharray="210 280" />
                       </svg>
                       <div className="circle-text">
                         <span className="percent">33%</span>
-                        <span className="change">+33%</span>
+                        <span className="change">+2%</span>
                       </div>
                     </div>
                     <div className="conversion-info">
-                        <span className="label">Cart Abandonment</span>
-                        <span className="value">73%</span>
-                        <span className="trend positive">+15%</span>
+                      <span className="label">Total Products</span>
+                      <span className="value">{stats.totalProducts}</span>
+                      <span className="trend positive">Live</span>
                     </div>
                   </div>
                 </div>
@@ -197,55 +239,61 @@ export function AdminDashboard() {
             </div>
 
             <div className="dashboard-bottom-grid">
-               <div className="chart-card">
-                  <h3>Earnings By Item Type</h3>
-                  <div className="pie-chart-container">
-                     {/* Simplified Pie Mock */}
-                     <div className="mock-pie"></div>
-                     <div className="pie-legend">
-                        <div className="legend-item"><span className="dot" style={{backgroundColor: '#fbbf24'}}></span> Paleo Bars</div>
-                        <div className="legend-item"><span className="dot" style={{backgroundColor: '#10b981'}}></span> Bow Ties</div>
-                     </div>
+              <div className="chart-card">
+                <h3>Earnings By Category</h3>
+                <div className="pie-chart-container">
+                  <div className="mock-pie" style={{
+                    background: `conic-gradient(#fbbf24 0% 40%, #10b981 40% 100%)`
+                  }}></div>
+                  <div className="pie-legend">
+                    {Object.keys(stats.categoryEarnings).slice(0, 3).map((cat, i) => (
+                      <div key={i} className="legend-item">
+                        <span className="dot" style={{ backgroundColor: i === 0 ? '#fbbf24' : '#10b981' }}></span>
+                        {cat}
+                      </div>
+                    ))}
                   </div>
-               </div>
+                </div>
+              </div>
 
-               <div className="stat-summary-cards">
-                  <div className="mini-stat-card">
-                    <div className="stat-content">
-                       <span className="value">$15,678</span>
-                       <span className="label">VISITS</span>
-                    </div>
-                    <div className="mini-graph yellow"></div>
+              <div className="stat-summary-cards">
+                <div className="mini-stat-card">
+                  <div className="stat-content">
+                    <span className="value">{stats.totalProducts}</span>
+                    <span className="label">ACTIVE PRODUCTS</span>
                   </div>
-                  <div className="mini-stat-card">
-                    <div className="stat-content">
-                       <span className="value">46.41%</span>
-                       <span className="label">BOUNCE RATE</span>
-                    </div>
-                    <div className="mini-graph blue"></div>
+                  <div className="mini-graph yellow"></div>
+                </div>
+                <div className="mini-stat-card">
+                  <div className="stat-content">
+                    <span className="value">{stats.totalUsers}</span>
+                    <span className="label">REGISTERED USERS</span>
                   </div>
-               </div>
+                  <div className="mini-graph blue"></div>
+                </div>
+              </div>
 
-               <div className="chart-card recent-reviews">
-                  <div className="card-header">
-                    <h3>Recent Reviews</h3>
-                    <select><option>Sort By Newest</option></select>
+              <div className="chart-card recent-reviews">
+                <div className="card-header">
+                  <h3>Real-time Activity</h3>
+                  <select><option>Recent Orders</option></select>
+                </div>
+                {/* Repurposing reviews for recent orders display */}
+                <div className="review-item">
+                  <div className="review-stars">
+                    <span style={{ color: '#10b981', fontWeight: 'bold' }}>System Online</span>
                   </div>
-                  <div className="review-item">
-                    <div className="review-stars">
-                       <FiStar className="filled"/><FiStar className="filled"/><FiStar className="filled"/><FiStar className="filled"/><FiStar />
-                       <span>for Paleo Bars</span>
-                    </div>
-                    <span className="review-author">By Jens Brincker 11 day ago</span>
-                    <p>Neque porro quisquam est qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit.</p>
-                  </div>
-               </div>
+                  <span className="review-author">Monitoring orders and inventory</span>
+                  <p>All core systems are operational. Last data sync: {new Date().toLocaleTimeString()}</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </main>
     </div>
   );
+
 }
 
 export default AdminDashboard;

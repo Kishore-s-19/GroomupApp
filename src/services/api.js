@@ -234,17 +234,21 @@ export const orderService = {
   }
 };
 
-// Payment Services
-export const paymentService = {
-  createPayment: async (orderId, provider = 'RAZORPAY') => {
-    return api.post('/payments', { orderId, provider });
-  },
-  getLatestPayment: async (orderId) => {
-    return api.get(`/payments/order/${orderId}/latest`);
-  },
-  verifyPayment: async (orderId) => {
-    return api.get(`/payments/order/${orderId}/latest`);
-  }
-};
+  // Payment Services
+  export const paymentService = {
+    createPayment: async (orderId, provider = 'RAZORPAY') => {
+      return api.post('/payments', { orderId, provider });
+    },
+    getLatestPayment: async (orderId) => {
+      return api.get(`/payments/order/${orderId}/latest`);
+    },
+    verifyPayment: async (orderId) => {
+      return api.get(`/payments/order/${orderId}/latest`);
+    },
+    verifyRazorpayPayment: async (payload) => {
+      return api.post('/payments/verify/razorpay', payload);
+    }
+  };
+
 
 export default api;

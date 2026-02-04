@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { FaTimesCircle, FaHome, FaRedo } from 'react-icons/fa';
+import { orderService } from '../services/api';
 import '../assets/styles/order-failure.css';
 
 const OrderFailure = () => {
@@ -19,6 +20,44 @@ const OrderFailure = () => {
     };
     return reasonMap[reason] || decodeURIComponent(reason);
   };
+
+  useEffect(() => {
+    if (!orderId) {
+      return;
+    }
+
+    let isActive = true;
+    let attempts = 0;
+    const maxAttempts = 24;
+    const pollIntervalMs = 5000;
+
+    const pollOrderStatus = async () => {
+      try {
+        const order = await orderService.getOrderById(orderId);
+        if (!isActive) {
+          return;
+        }
+
+        if (order?.status === 'PAID') {
+          navigate(`/order-success?orderId=${orderId}`);
+          return;
+        }
+      } catch (error) {
+        // Ignore polling errors and keep retrying until max attempts.
+      }
+
+      attempts += 1;
+      if (isActive && attempts < maxAttempts) {
+        setTimeout(pollOrderStatus, pollIntervalMs);
+      }
+    };
+
+    pollOrderStatus();
+
+    return () => {
+      isActive = false;
+    };
+  }, [orderId, navigate]);
 
   return (
     <div className="order-failure-page">

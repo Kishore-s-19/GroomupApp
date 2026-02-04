@@ -137,57 +137,47 @@ const Checkout = () => {
           return;
         }
 
-        if (paymentMethod === 'upi') {
-          try {
-            const verifyMessage = document.createElement('div');
-            verifyMessage.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:10000;text-align:center;';
-            verifyMessage.innerHTML = '<h3>Verifying Payment...</h3><p>Please wait while we confirm your payment.</p>';
-            document.body.appendChild(verifyMessage);
+          if (!response.razorpay_signature) {
+            console.error('Missing Razorpay signature:', response);
+            navigate(`/order-failure?orderId=${orderId}&reason=missing_payment_signature`);
+            return;
+          }
 
-            let verified = false;
-            let attempts = 0;
-            const maxAttempts = 8;
-            
-            while (!verified && attempts < maxAttempts) {
-              await new Promise(resolve => setTimeout(resolve, 2000));
-              
-              try {
-                const latestPayment = await paymentService.getLatestPayment(orderId);
-                console.log('Payment status check:', latestPayment);
-                
-                if (latestPayment && latestPayment.status === 'SUCCESS') {
-                  verified = true;
-                  document.body.removeChild(verifyMessage);
-                  clearCart();
-                  navigate(`/order-success?orderId=${orderId}&paymentId=${response.razorpay_payment_id}`);
-                  return;
-                }
-              } catch (err) {
-                console.log(`Payment verification attempt ${attempts + 1} failed:`, err.message);
-              }
-              
-              attempts++;
+          const verificationPayload = {
+            orderId,
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpaySignature: response.razorpay_signature
+          };
+
+          let verifyMessage = null;
+
+          try {
+            if (paymentMethod === 'upi') {
+              verifyMessage = document.createElement('div');
+              verifyMessage.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:10000;text-align:center;';
+              verifyMessage.innerHTML = '<h3>Verifying Payment...</h3><p>Please wait while we confirm your payment.</p>';
+              document.body.appendChild(verifyMessage);
             }
-            
-            document.body.removeChild(verifyMessage);
-            
-            if (!verified) {
-              alert('Payment verification failed. Please check your order status or contact support. If payment was successful, your order will be processed.');
-              navigate(`/order-failure?orderId=${orderId}&reason=payment_verification_failed`);
-              return;
+
+            await paymentService.verifyRazorpayPayment(verificationPayload);
+
+            if (verifyMessage) {
+              document.body.removeChild(verifyMessage);
             }
+
+            clearCart();
+            navigate(`/order-success?orderId=${orderId}&paymentId=${response.razorpay_payment_id}`);
           } catch (error) {
             console.error('Payment verification error:', error);
-            const verifyMsg = document.querySelector('div[style*="Verifying Payment"]');
-            if (verifyMsg) document.body.removeChild(verifyMsg);
-            
-            alert('Could not verify payment status. Please check your order status. If payment was successful, your order will be processed.');
-            navigate(`/order-failure?orderId=${orderId}&reason=verification_error`);
+            if (verifyMessage && document.body.contains(verifyMessage)) {
+              document.body.removeChild(verifyMessage);
+            }
+
+            alert('Payment verification failed. Please check your order status or contact support. If payment was successful, your order will be processed.');
+            navigate(`/order-failure?orderId=${orderId}&reason=payment_verification_failed`);
           }
-        } else {
-          clearCart();
-          navigate(`/order-success?orderId=${orderId}&paymentId=${response.razorpay_payment_id}`);
-        }
+
       },
       prefill: {
         name: `${formData.firstName} ${formData.lastName}`.trim() || 'Customer',

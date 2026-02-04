@@ -89,7 +89,12 @@ const Footer = () => {
       </div>
 
       <div className="footer-bottom">
-        © {new Date().getFullYear()} Groomup. All rights reserved.
+        <p className="footer-disclaimer">
+          <strong>Disclaimer:</strong> This website is for demo/portfolio purposes only. Please do not place any orders or expect delivery. Product images belong to their respective brands/owners (no rights claimed). Address and contact details shown are placeholders.
+        </p>
+        <div className="footer-copy">
+          &copy; {new Date().getFullYear()} Groomup. All rights reserved.
+        </div>
       </div>
     </footer>
   );

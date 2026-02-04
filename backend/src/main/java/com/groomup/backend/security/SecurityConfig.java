@@ -26,8 +26,7 @@ public class SecurityConfig {
 
     public SecurityConfig(
             JwtAuthenticationFilter jwtAuthFilter,
-            UserDetailsService userDetailsService
-    ) {
+            UserDetailsService userDetailsService) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.userDetailsService = userDetailsService;
     }
@@ -36,56 +35,54 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
-            .csrf(csrf -> csrf.disable())
+                .csrf(csrf -> csrf.disable())
 
-            .cors(Customizer.withDefaults())
+                .cors(Customizer.withDefaults())
 
-            .headers(headers -> headers
-                .xssProtection(xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
-                .contentSecurityPolicy(csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
-                .frameOptions(frame -> frame.deny())
-            )
+                .headers(headers -> headers
+                        .xssProtection(
+                                xss -> xss.headerValue(XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
+                        .contentSecurityPolicy(
+                                csp -> csp.policyDirectives("default-src 'self'; frame-ancestors 'none';"))
+                        .frameOptions(frame -> frame.deny()))
 
-            .formLogin(form -> form.disable())
-            .httpBasic(basic -> basic.disable())
+                .formLogin(form -> form.disable())
+                .httpBasic(basic -> basic.disable())
 
-            .sessionManagement(sess ->
-                sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-            )
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            .authorizeHttpRequests(auth -> auth
+                .authorizeHttpRequests(auth -> auth
 
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers("/error").permitAll()
 
-                .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
 
-                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
 
-                .requestMatchers("/api/payments/webhook/**").permitAll()
+                        .requestMatchers("/api/payments/webhook/**").permitAll()
 
-                .requestMatchers("/api/payments/**").authenticated()
+                        .requestMatchers("/api/payments/**").authenticated()
 
-                .requestMatchers(
-                        "/api/cart/**",
-                        "/api/profile/**",
-                        "/api/users/me",
-                        "/api/orders/**"
-                ).authenticated()
+                        .requestMatchers(
+                                "/api/cart/**",
+                                "/api/profile/**",
+                                "/api/users/me",
+                                "/api/orders/**")
+                        .authenticated()
 
-                .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/products/**").hasRole("ADMIN")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
 
-                .anyRequest().authenticated()
-            )
+                        .anyRequest().authenticated())
 
-            .authenticationProvider(authenticationProvider())
+                .authenticationProvider(authenticationProvider())
 
-            .addFilterBefore(
-                    jwtAuthFilter,
-                    UsernamePasswordAuthenticationFilter.class
-            );
+                .addFilterBefore(
+                        jwtAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -105,8 +102,7 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config
-    ) throws Exception {
+            AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 }

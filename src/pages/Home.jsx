@@ -56,65 +56,66 @@ const Home = () => {
 
   return (
     <>
-    <div className={`home-page ${isRestoring ? "restoring-scroll" : ""}`}>
-      <HeroSlider onCategoryChange={(c) => handleCategoryChange(c, "hero")} />
+      <main className={`home-page ${isRestoring ? "restoring-scroll" : ""}`}>
+        <HeroSlider onCategoryChange={(c) => handleCategoryChange(c, "hero")} />
 
-      <ProductGrid
-        selectedCategory={selectedCategory}
-        onCategoryChange={(c) => handleCategoryChange(c, "filters")}
-        categoryChangeSource={categoryChangeSource}
-      />
-
-      <section className="services">
-        <div className="services-container">
-          <div className="service-item">
-            <i className="fas fa-shipping-fast"></i>
-            <h3>FREE SHIPPING</h3>
-            <p>ON ALL ORDERS</p>
-          </div>
-
-          <div className="service-item">
-            <i className="fas fa-clock"></i>
-            <h3>ORDERS DISPATCHED</h3>
-            <p>WITHIN 2-HOURS</p>
-          </div>
-
-          <div className="service-item">
-            <i className="fas fa-users"></i>
-            <h3>TRUSTED BY 2M+</h3>
-            <p>HAPPY CUSTOMERS</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="newsletter">
-        <h2>Get Coupons & Offers</h2>
-        <p>
-          We make great emails (and even better offers).  
-          You can unsubscribe anytime.
-        </p>
-
-        <form
-          className="newsletter-form"
-          onSubmit={handleNewsletterSubmit}
-        >
-          <input
-            type="email"
-            name="email"
-            placeholder="Enter your email address"
-            required
-          />
-          <button type="submit">Subscribe</button>
-        </form>
-      </section>
-
-      {showPopup && (
-        <NewsletterPopup
-          email={subscriberEmail}
-          onClose={closePopup}
+        <ProductGrid
+          selectedCategory={selectedCategory}
+          onCategoryChange={(c) => handleCategoryChange(c, "filters")}
+          categoryChangeSource={categoryChangeSource}
         />
-      )}
-      </div>
+
+        <section className="services">
+          <div className="services-container">
+            <div className="service-item">
+              <i className="fas fa-shipping-fast" aria-hidden="true"></i>
+              <h3>FREE SHIPPING</h3>
+              <p>ON ALL ORDERS</p>
+            </div>
+
+            <div className="service-item">
+              <i className="fas fa-clock" aria-hidden="true"></i>
+              <h3>ORDERS DISPATCHED</h3>
+              <p>WITHIN 2-HOURS</p>
+            </div>
+
+            <div className="service-item">
+              <i className="fas fa-users" aria-hidden="true"></i>
+              <h3>TRUSTED BY 2M+</h3>
+              <p>HAPPY CUSTOMERS</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="newsletter">
+          <h2>Get Coupons & Offers</h2>
+          <p>
+            We make great emails (and even better offers).
+            You can unsubscribe anytime.
+          </p>
+
+          <form
+            className="newsletter-form"
+            onSubmit={handleNewsletterSubmit}
+          >
+            <input
+              type="email"
+              name="email"
+              placeholder="Enter your email address"
+              required
+              aria-label="Email address for newsletter"
+            />
+            <button type="submit">Subscribe</button>
+          </form>
+        </section>
+
+        {showPopup && (
+          <NewsletterPopup
+            email={subscriberEmail}
+            onClose={closePopup}
+          />
+        )}
+      </main>
     </>
   );
 };
